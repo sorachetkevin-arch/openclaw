@@ -1,0 +1,28 @@
+# TikTok Scraper Configuration
+
+# Output settings
+output:
+  directory: "./data"
+  format: "json"  # json or csv
+  
+# Scheduler settings
+scheduler:
+  enabled: true
+  trending_interval_minutes: 60  # Run trending scrape every hour
+  analysis_interval_minutes: 360  # Run analysis every 6 hours
+  
+# TikTok API settings (if using official API)
+api:
+  use_official: false  # Set to true if you have TikTok API credentials
+  api_key: ""
+  api_secret: ""
+
+# Data retention
+retention:
+  keep_days: 30  # Delete data older than 30 days
+  auto_cleanup: true
+  
+# Notification settings (optional)
+notify:
+  enabled: false
+  webhook_url: ""
