@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContentForge: Multi-Agent AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+      /* Custom scrollbar for a cleaner look */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8; 
+      }
+      
+      /* Markdown Styles */
+      .markdown-body h1 { @apply text-2xl font-bold mt-6 mb-4 text-slate-800; }
+      .markdown-body h2 { @apply text-xl font-semibold mt-5 mb-3 text-slate-800 border-b pb-2; }
+      .markdown-body h3 { @apply text-lg font-medium mt-4 mb-2 text-slate-700; }
+      .markdown-body p { @apply mb-4 text-slate-600 leading-relaxed; }
+      .markdown-body ul { @apply list-disc pl-6 mb-4 text-slate-600; }
+      .markdown-body ol { @apply list-decimal pl-6 mb-4 text-slate-600; }
+      .markdown-body li { @apply mb-1; }
+      .markdown-body strong { @apply font-semibold text-slate-800; }
+      .markdown-body blockquote { @apply border-l-4 border-indigo-500 pl-4 italic text-slate-500 my-4 bg-slate-50 py-2 pr-2 rounded-r; }
+      .markdown-body code { @apply bg-slate-100 text-pink-600 px-1 py-0.5 rounded text-sm font-mono; }
+      .markdown-body pre { @apply bg-slate-800 text-slate-50 p-4 rounded-lg overflow-x-auto mb-4; }
+      .markdown-body pre code { @apply bg-transparent text-inherit p-0; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen font-sans antialiased">
+    <div id="root"></div>
+<script type="module" src="/index.js"></script></body>
+</html>
