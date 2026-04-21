@@ -1,55 +1,53 @@
-# TikTok Scraper System
+# Vertex AI Studio Frontend App with Node.js Backend
 
-ระบบดึงข้อมูล TikTok สำหรับ Social Media Analytics
+This repository contains a frontend and a Node.js backend, designed to run together.
+The backend acts as a proxy, handling Google Cloud API calls.
 
-## Features
+This project is intended for demonstration and prototyping purposes only.
+It is not intended for use in a production environment.
 
-- 🎬 ดึงข้อมูล Trending Videos
-- 👤 ดึงข้อมูล User Profile
-- 📊 วิเคราะห์ Engagement Metrics
-- 📅 ตั้งเวลาดึงข้อมูลอัตโนมัติ (Cron)
-- 📁 Export ข้อมูลเป็น JSON/CSV
+## Prerequisites
 
-## Installation
+To run this application locally, you need:
+
+*   **[Google Cloud SDK / gcloud CLI](https://cloud.google.com/sdk/docs/install)**: Follow the instructions to install the SDK.
+
+*   **gcloud Initialization**:
+    *   Initialize the gcloud CLI:
+        ```bash
+        gcloud init
+        ```
+    *   Authenticate for Application Default Credentials (needed to call Google Cloud APIs):
+        ```bash
+        gcloud auth application-default login
+        ```
+
+*   **Node.js and npm**: Ensure you have Node.js and its package manager, `npm`, installed on your machine.
+
+## Project Structure
+
+The project is organized into two main directories:
+
+*   `frontend/`: Contains the Frontend application code.
+*   `backend/`: Contains the Node.js/Express server code to proxy Google Cloud API calls.
+
+## Backend Environment Variables
+
+The `backend/.env.local` file is automatically generated when you download this application.
+It contains essential Google Cloud environment variables pre-configured based on your project settings at the time of download.
+
+The variables set in `backend/.env.local` are:
+*   `API_BACKEND_PORT`: The port the backend API server listens on (e.g., `5000`).
+*   `API_PAYLOAD_MAX_SIZE`: The maximum size of the request payload accepted by the backend server (e.g., `5mb`).
+*   `GOOGLE_CLOUD_LOCATION`: The Google Cloud region associated with your project.
+*   `GOOGLE_CLOUD_PROJECT`: Your Google Cloud Project ID.
+
+**Note:** These variables are automatically populated during the download process.
+You can modify the values in `backend/.env.local` if you need to change them.
+
+## Installation and Running the App
+
+To install dependencies and run your Google Cloud Vertex AI Studio App locally, execute the following command:
 
 ```bash
-pip install -r requirements.txt
-```
-
-## Usage
-
-### Basic - Scrape Trending Videos
-
-```python
-from tiktok_scraper import TikTokScraper
-
-scraper = TikTokScraper()
-trending = scraper.get_trending(count=20)
-print(trending)
-```
-
-### Scrape User Profile
-
-```python
-user_data = scraper.get_user_profile("@username")
-print(user_data)
-```
-
-### Schedule Daily Scrape
-
-```bash
-python scheduler.py --task trending --interval daily
-```
-
-## Configuration
-
-ดู `config.yaml` สำหรับตั้งค่า:
-- API credentials
-- Output directory
-- Schedule settings
-
-## Disclaimer
-
-⚠️ ระบบนี้ใช้สำหรับการศึกษาและวิจัยเท่านั้น
-โปรดตรวจสอบ TikTok Terms of Service ก่อนใช้งาน
-# openclaw
+npm install && npm run dev
