@@ -1,5 +1,9 @@
 import React from 'react';
-import { Search, PenTool, CheckCircle, Share2, Play, Loader2, AlertCircle, FileText, ChevronRight, RefreshCw, Globe, Sparkles } from 'lucide-react';
+import {
+  Search, PenTool, CheckCircle, Share2, Play, Loader2, AlertCircle, FileText,
+  ChevronRight, RefreshCw, Globe, Sparkles,
+  Calendar, Clock, User, Tag, ChevronLeft, Activity, Zap, Target, MessageSquare,
+} from 'lucide-react';
 
 interface IconProps {
   name: string;
@@ -20,6 +24,15 @@ export const Icon: React.FC<IconProps> = ({ name, className }) => {
     case 'RefreshCw': return <RefreshCw className={className} />;
     case 'Globe': return <Globe className={className} />;
     case 'Sparkles': return <Sparkles className={className} />;
+    case 'Calendar': return <Calendar className={className} />;
+    case 'Clock': return <Clock className={className} />;
+    case 'User': return <User className={className} />;
+    case 'Tag': return <Tag className={className} />;
+    case 'ChevronLeft': return <ChevronLeft className={className} />;
+    case 'Activity': return <Activity className={className} />;
+    case 'Zap': return <Zap className={className} />;
+    case 'Target': return <Target className={className} />;
+    case 'MessageSquare': return <MessageSquare className={className} />;
     default: return <FileText className={className} />;
   }
 };
