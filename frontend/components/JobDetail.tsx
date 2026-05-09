@@ -7,6 +7,7 @@ import {
 } from '../constants';
 import { StatusBadge } from './StatusBadge';
 import { Icon } from './Icons';
+import { LinePanel } from './LinePanel';
 
 interface Props {
   job: Job;
@@ -420,6 +421,9 @@ export const JobDetail: React.FC<Props> = ({ job, onBack, onUpdate, onDelete }) 
           </div>
         </div>
       </div>
+
+      {/* LINE Integration */}
+      <LinePanel job={job} />
     </div>
   );
 };
