@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>CRM Lead Copilot — LIFF</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { height: 100%; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #F0FDF4; color: #0F172A; -webkit-font-smoothing: antialiased; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 2px; }
+    input, select, textarea, button { font-family: inherit; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// Mock LINE profile
+const LINE_PROFILE = { displayName: 'สมชาย ใจดี', userId: 'Uabc123', pictureUrl: null };
+
+const LEADS_DATA = [
+  { id:1, name:'Natthawut K.',  company:'XYZ Ltd',  score:88, status:'QUALIFIED',     budget:'฿120K', source:'Google Ads',  followUp:'Today 11:00', overdue:false },
+  { id:2, name:'วิภา แสนดี',    company:'DEF Co',   score:84, status:'PROPOSAL_SENT', budget:'฿80K',  source:'LINE Ads',    followUp:'Today 14:00', overdue:false },
+  { id:3, name:'Priya Sharma',  company:'GHI Inc',  score:82, status:'CONTACTED',     budget:'฿200K', source:'Referral',    followUp:'09:00',       overdue:true  },
+  { id:4, name:'มานะ รักดี',    company:'JKL Pvt',  score:80, status:'FOLLOW_UP',     budget:'฿35K',  source:'Facebook',    followUp:'Today 16:00', overdue:false },
+  { id:5, name:'นภา สุขใส',     company:'VWX Co',   score:55, status:'NEW',           budget:'฿45K',  source:'Google Ads',  followUp:'Tomorrow',    overdue:false },
+];
+
+const STATUS_LABELS = {
+  NEW:'New', CONTACTED:'Contacted', QUALIFIED:'Qualified',
+  PROPOSAL_SENT:'Proposal', FOLLOW_UP:'Follow Up', WON:'Won', LOST:'Lost',
+};
+const STATUS_COLORS = {
+  NEW:'#6366F1', CONTACTED:'#06B6D4', QUALIFIED:'#8B5CF6',
+  PROPOSAL_SENT:'#F59E0B', FOLLOW_UP:'#F97316', WON:'#10B981', LOST:'#EF4444',
+};
+
+function Avatar({ name, size=36 }) {
+  const hue = name.charCodeAt(0) * 37 % 360;
+  return (
+    <div style={{ width:size,height:size,borderRadius:'50%',background:`hsl(${hue},60%,65%)`,display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontWeight:700,fontSize:size*0.35,flexShrink:0 }}>
+      {name.charAt(0)}
+    </div>
+  );
+}
+
+function ScoreDot({ score }) {
+  const color = score>=80?'#EF4444':score>=50?'#F59E0B':'#94A3B8';
+  const label = score>=80?'HOT':score>=50?'WARM':'COLD';
+  return <span style={{ background:color+'18',color,borderRadius:6,padding:'2px 7px',fontSize:10,fontWeight:700 }}>{label} {score}</span>;
+}
+
+function StatusBadge({ status }) {
+  const color = STATUS_COLORS[status]||'#94A3B8';
+  return <span style={{ background:color+'18',color,borderRadius:5,padding:'2px 7px',fontSize:10,fontWeight:600 }}>{STATUS_LABELS[status]||status}</span>;
+}
+
+// ── Bottom Nav ──
+function BottomNav({ tab, setTab }) {
+  const items = [
+    { id:'home',    icon:'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z' },
+    { id:'leads',   icon:'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z' },
+    { id:'followup',icon:'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z' },
+    { id:'report',  icon:'M5 9h2v9H5V9zm4-5h2v14H9V4zm4 7h2v7h-2v-7zm4-4h2v11h-2V7z' },
+  ];
+  const labels = { home:'Home', leads:'Leads', followup:'Follow-up', report:'Report' };
+  return (
+    <nav style={{ position:'fixed',bottom:0,left:0,right:0,background:'#fff',borderTop:'1px solid #E2E8F0',display:'flex',height:60,zIndex:50,paddingBottom:'env(safe-area-inset-bottom)' }}>
+      {items.map(item => {
+        const active = tab===item.id;
+        return (
+          <button key={item.id} onClick={()=>setTab(item.id)} style={{ flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,background:'transparent',border:'none',cursor:'pointer',color:active?'#4ADE80':'#94A3B8' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d={item.icon}/></svg>
+            <span style={{ fontSize:9,fontWeight:active?700:400 }}>{labels[item.id]}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+// ── Top Bar ──
+function TopBar({ title }) {
+  return (
+    <header style={{ background:'#4ADE80',padding:'14px 16px 12px',display:'flex',alignItems:'center',gap:12,paddingTop:'max(14px,env(safe-area-inset-top))' }}>
+      <div style={{ width:30,height:30,borderRadius:8,background:'#14532D',display:'flex',alignItems:'center',justifyContent:'center' }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+      </div>
+      <span style={{ fontWeight:700,fontSize:15,color:'#14532D',flex:1 }}>{title}</span>
+      <div style={{ display:'flex',alignItems:'center',gap:6 }}>
+        <div style={{ width:28,height:28,borderRadius:'50%',background:'#14532D',display:'flex',alignItems:'center',justifyContent:'center' }}>
+          <span style={{ color:'white',fontWeight:700,fontSize:11 }}>{LINE_PROFILE.displayName.charAt(0)}</span>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// ── HOME ──
+function HomeTab({ setTab }) {
+  const today = new Date().toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const kpis = [
+    { label:'Leads ของฉัน', value:'5', color:'#6366F1' },
+    { label:'Follow-up วันนี้', value:'3', color:'#F59E0B' },
+    { label:'Hot Leads', value:'2', color:'#EF4444' },
+    { label:'Won', value:'1', color:'#10B981' },
+  ];
+  return (
+    <div style={{ padding:'16px 16px 80px' }}>
+      {/* Greeting */}
+      <div style={{ marginBottom:20 }}>
+        <div style={{ fontSize:18,fontWeight:700,color:'#0F172A' }}>สวัสดี, {LINE_PROFILE.displayName}!</div>
+        <div style={{ fontSize:12,color:'#64748B',marginTop:2 }}>{today}</div>
+      </div>
+      {/* KPI grid */}
+      <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20 }}>
+        {kpis.map((k,i)=>(
+          <div key={i} style={{ background:'#fff',borderRadius:12,padding:'16px',border:'1px solid #E2E8F0',boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ fontSize:26,fontWeight:700,color:k.color }}>{k.value}</div>
+            <div style={{ fontSize:11,color:'#64748B',marginTop:2 }}>{k.label}</div>
+          </div>
+        ))}
+      </div>
+      {/* Quick actions */}
+      <div style={{ fontWeight:700,fontSize:13,color:'#0F172A',marginBottom:10 }}>Quick Actions</div>
+      <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
+        {[
+          { label:'ดู Leads ที่ได้รับมอบหมาย', tab:'leads', color:'#6366F1' },
+          { label:'Follow-up วันนี้', tab:'followup', color:'#F59E0B' },
+          { label:'รายงานประจำวัน', tab:'report', color:'#4ADE80' },
+        ].map((a,i)=>(
+          <button key={i} onClick={()=>setTab(a.tab)} style={{ background:'#fff',border:'1px solid #E2E8F0',borderRadius:12,padding:'14px 16px',display:'flex',alignItems:'center',gap:12,cursor:'pointer',width:'100%',textAlign:'left' }}>
+            <div style={{ width:36,height:36,borderRadius:10,background:a.color+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+              <div style={{ width:8,height:8,borderRadius:'50%',background:a.color }}/>
+            </div>
+            <span style={{ fontSize:13,fontWeight:600,color:'#0F172A' }}>{a.label}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#94A3B8" style={{ marginLeft:'auto' }}><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── LEADS ──
+function LeadsTab() {
+  const [selected, setSelected] = useState(null);
+  const [noteText, setNoteText] = useState('');
+  const [leads, setLeads] = useState(LEADS_DATA);
+  const [showNote, setShowNote] = useState(false);
+
+  const updateStatus = (id, status) => {
+    setLeads(ls => ls.map(l => l.id===id ? {...l, status} : l));
+    setSelected(prev => prev && prev.id===id ? {...prev, status} : prev);
+  };
+
+  if (selected) {
+    return (
+      <div style={{ padding:'16px 16px 80px' }}>
+        <button onClick={()=>setSelected(null)} style={{ display:'flex',alignItems:'center',gap:6,background:'none',border:'none',cursor:'pointer',color:'#6366F1',fontWeight:600,fontSize:13,marginBottom:16,padding:0 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          กลับ
+        </button>
+        {/* Lead detail */}
+        <div style={{ background:'#fff',borderRadius:14,padding:'18px',border:'1px solid #E2E8F0',marginBottom:14 }}>
+          <div style={{ display:'flex',gap:12,alignItems:'flex-start',marginBottom:14 }}>
+            <Avatar name={selected.name} size={44}/>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:700,fontSize:16,color:'#0F172A' }}>{selected.name}</div>
+              <div style={{ fontSize:12,color:'#64748B' }}>{selected.company}</div>
+              <div style={{ marginTop:6,display:'flex',gap:6,flexWrap:'wrap' }}>
+                <StatusBadge status={selected.status}/>
+                <ScoreDot score={selected.score}/>
+              </div>
+            </div>
+          </div>
+          {[['Budget',selected.budget],['Source',selected.source],['Follow-up',selected.followUp]].map(([k,v])=>(
+            <div key={k} style={{ display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:'1px solid #F8FAFC' }}>
+              <span style={{ fontSize:12,color:'#64748B' }}>{k}</span>
+              <span style={{ fontSize:12,fontWeight:600,color:'#0F172A' }}>{v}</span>
+            </div>
+          ))}
+        </div>
+        {/* Update status */}
+        <div style={{ background:'#fff',borderRadius:14,padding:'16px',border:'1px solid #E2E8F0',marginBottom:14 }}>
+          <div style={{ fontWeight:700,fontSize:13,color:'#0F172A',marginBottom:12 }}>อัพเดตสถานะ</div>
+          <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8 }}>
+            {Object.entries(STATUS_LABELS).map(([k,v])=>(
+              <button key={k} onClick={()=>updateStatus(selected.id,k)} style={{
+                padding:'10px 8px',borderRadius:10,border:`2px solid ${selected.status===k?STATUS_COLORS[k]:'#E2E8F0'}`,
+                background:selected.status===k?STATUS_COLORS[k]+'18':'#fff',
+                color:selected.status===k?STATUS_COLORS[k]:'#374151',
+                fontSize:12,fontWeight:selected.status===k?700:400,cursor:'pointer',
+              }}>{v}</button>
+            ))}
+          </div>
+        </div>
+        {/* Note */}
+        <div style={{ background:'#fff',borderRadius:14,padding:'16px',border:'1px solid #E2E8F0' }}>
+          <div style={{ fontWeight:700,fontSize:13,color:'#0F172A',marginBottom:10 }}>เพิ่ม Note</div>
+          <textarea value={noteText} onChange={e=>setNoteText(e.target.value)} placeholder="พิมพ์ note..." style={{ width:'100%',padding:'10px',borderRadius:8,border:'1px solid #E2E8F0',fontSize:13,height:80,resize:'none',outline:'none',boxSizing:'border-box' }}/>
+          <button onClick={()=>{ if(noteText.trim()){ setNoteText(''); }}} style={{ marginTop:8,background:'#6366F1',color:'white',border:'none',borderRadius:8,padding:'10px 18px',fontSize:13,fontWeight:600,cursor:'pointer',width:'100%' }}>
+            บันทึก Note
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding:'16px 16px 80px' }}>
+      <div style={{ fontWeight:700,fontSize:16,color:'#0F172A',marginBottom:4 }}>Leads ของฉัน</div>
+      <div style={{ fontSize:12,color:'#64748B',marginBottom:16 }}>{leads.length} leads ที่ได้รับมอบหมาย</div>
+      <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
+        {leads.map(lead=>(
+          <div key={lead.id} onClick={()=>setSelected(lead)} style={{ background:'#fff',borderRadius:14,padding:'14px 16px',border:'1px solid #E2E8F0',boxShadow:'0 1px 3px rgba(0,0,0,0.04)',cursor:'pointer',active:{opacity:0.9} }}>
+            <div style={{ display:'flex',gap:10,alignItems:'flex-start' }}>
+              <Avatar name={lead.name} size={38}/>
+              <div style={{ flex:1,minWidth:0 }}>
+                <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start' }}>
+                  <div style={{ fontWeight:600,fontSize:13,color:'#0F172A' }}>{lead.name}</div>
+                  <ScoreDot score={lead.score}/>
+                </div>
+                <div style={{ fontSize:11,color:'#64748B',marginTop:1 }}>{lead.company} · {lead.source}</div>
+                <div style={{ display:'flex',gap:6,marginTop:6,alignItems:'center',flexWrap:'wrap' }}>
+                  <StatusBadge status={lead.status}/>
+                  <span style={{ fontSize:11,color:lead.overdue?'#EF4444':'#F59E0B',fontWeight:600 }}>{lead.overdue?'Overdue':lead.followUp}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── FOLLOW-UP ──
+function FollowUpTab() {
+  const followUps = LEADS_DATA.map(l=>({ ...l, done:false }));
+  const [items, setItems] = useState(followUps);
+  const toggle = id => setItems(is => is.map(i => i.id===id ? {...i, done:!i.done} : i));
+  const overdue = items.filter(i=>i.overdue && !i.done);
+  const today   = items.filter(i=>!i.overdue && !i.done);
+  const done    = items.filter(i=>i.done);
+
+  const Section = ({ title, data, color }) => data.length === 0 ? null : (
+    <div style={{ marginBottom:16 }}>
+      <div style={{ fontSize:11,fontWeight:700,color,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:8 }}>{title} ({data.length})</div>
+      {data.map(item=>(
+        <div key={item.id} onClick={()=>toggle(item.id)} style={{ background:'#fff',borderRadius:12,padding:'12px 14px',border:`1px solid ${item.done?'#E2E8F0':'#E2E8F0'}`,marginBottom:8,display:'flex',gap:10,alignItems:'center',cursor:'pointer',opacity:item.done?0.5:1 }}>
+          <div style={{ width:20,height:20,borderRadius:6,border:`2px solid ${item.done?'#10B981':color}`,background:item.done?'#10B981':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+            {item.done && <svg width="11" height="11" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>}
+          </div>
+          <Avatar name={item.name} size={30}/>
+          <div style={{ flex:1,minWidth:0 }}>
+            <div style={{ fontWeight:600,fontSize:13,color:'#0F172A',textDecoration:item.done?'line-through':'none' }}>{item.name}</div>
+            <div style={{ fontSize:11,color:'#94A3B8' }}>{item.company} · {item.followUp}</div>
+          </div>
+          <ScoreDot score={item.score}/>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div style={{ padding:'16px 16px 80px' }}>
+      <div style={{ fontWeight:700,fontSize:16,color:'#0F172A',marginBottom:4 }}>Follow-up Today</div>
+      <div style={{ fontSize:12,color:'#64748B',marginBottom:16 }}>{items.filter(i=>!i.done).length} tasks remaining</div>
+      <Section title="Overdue" data={overdue} color="#EF4444"/>
+      <Section title="Today" data={today} color="#F59E0B"/>
+      <Section title="Done" data={done} color="#10B981"/>
+    </div>
+  );
+}
+
+// ── REPORT ──
+function ReportTab() {
+  const data = [
+    { label:'New Leads',      value:'34', color:'#6366F1', d:'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z' },
+    { label:'Contacted',      value:'28', color:'#06B6D4', d:'M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z' },
+    { label:'Hot Leads',      value:'12', color:'#EF4444', d:'M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67z' },
+    { label:'Follow-up Due',  value:'18', color:'#F59E0B', d:'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z' },
+    { label:'Won Today',      value:'6',  color:'#10B981', d:'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' },
+    { label:'Lost Today',     value:'2',  color:'#EF4444', d:'M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z' },
+  ];
+  const sources = [['Facebook Ads',320,'#6366F1'],['Google Ads',280,'#06B6D4'],['LINE Ads',210,'#4ADE80'],['Organic',180,'#F59E0B'],['Referral',150,'#8B5CF6']];
+  const maxSrc = Math.max(...sources.map(s=>s[1]));
+
+  return (
+    <div style={{ padding:'16px 16px 80px' }}>
+      <div style={{ fontWeight:700,fontSize:16,color:'#0F172A',marginBottom:2 }}>รายงานประจำวัน</div>
+      <div style={{ fontSize:12,color:'#64748B',marginBottom:16 }}>13 May 2026 · สรุป CRM วันนี้</div>
+      {/* KPIs */}
+      <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:16 }}>
+        {data.map((d,i)=>(
+          <div key={i} style={{ background:'#fff',borderRadius:12,padding:'12px',border:'1px solid #E2E8F0',textAlign:'center' }}>
+            <div style={{ width:28,height:28,borderRadius:8,background:d.color+'18',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 6px' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={d.color}><path d={d.d}/></svg>
+            </div>
+            <div style={{ fontSize:20,fontWeight:700,color:d.color }}>{d.value}</div>
+            <div style={{ fontSize:9,color:'#94A3B8',lineHeight:1.3,marginTop:2 }}>{d.label}</div>
+          </div>
+        ))}
+      </div>
+      {/* Source breakdown */}
+      <div style={{ background:'#fff',borderRadius:14,padding:'16px',border:'1px solid #E2E8F0' }}>
+        <div style={{ fontWeight:700,fontSize:13,color:'#0F172A',marginBottom:14 }}>Leads by Source</div>
+        {sources.map(([label,val,color],i)=>(
+          <div key={i} style={{ display:'flex',alignItems:'center',gap:8,marginBottom:10 }}>
+            <div style={{ width:70,fontSize:11,color:'#374151',textAlign:'right',flexShrink:0 }}>{label}</div>
+            <div style={{ flex:1,height:8,background:'#F1F5F9',borderRadius:4,overflow:'hidden' }}>
+              <div style={{ width:`${(val/maxSrc)*100}%`,height:'100%',background:color,borderRadius:4,transition:'width 0.5s' }}/>
+            </div>
+            <div style={{ width:30,fontSize:11,fontWeight:700,color:'#0F172A',textAlign:'right',flexShrink:0 }}>{val}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LIFFApp() {
+  const [tab, setTab] = useState('home');
+  const TAB_TITLES = { home:'CRM Lead Copilot', leads:'My Leads', followup:'Follow-up', report:'Daily Report' };
+  const content = {
+    home:     <HomeTab setTab={setTab}/>,
+    leads:    <LeadsTab/>,
+    followup: <FollowUpTab/>,
+    report:   <ReportTab/>,
+  };
+  return (
+    <div style={{ minHeight:'100vh',display:'flex',flexDirection:'column',background:'#F8FAFC' }}>
+      <TopBar title={TAB_TITLES[tab]}/>
+      <div style={{ flex:1,overflowY:'auto' }}>{content[tab]}</div>
+      <BottomNav tab={tab} setTab={setTab}/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<LIFFApp/>);
+</script>
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+    <rect width="120" height="80" fill="#F0FDF4"/>
+    <rect x="0" y="0" width="120" height="18" fill="#4ADE80"/>
+    <rect x="8" y="5" width="8" height="8" rx="2" fill="#14532D"/>
+    <rect x="22" y="6" width="40" height="6" rx="3" fill="#14532D" opacity=".6"/>
+    <rect x="8" y="24" width="50" height="10" rx="4" fill="#fff" stroke="#E2E8F0" strokeWidth=".5"/>
+    <rect x="62" y="24" width="50" height="10" rx="4" fill="#fff" stroke="#E2E8F0" strokeWidth=".5"/>
+    <rect x="8" y="40" width="50" height="10" rx="4" fill="#fff" stroke="#E2E8F0" strokeWidth=".5"/>
+    <rect x="62" y="40" width="50" height="10" rx="4" fill="#fff" stroke="#E2E8F0" strokeWidth=".5"/>
+    <rect x="8" y="56" width="104" height="16" rx="4" fill="#fff" stroke="#E2E8F0" strokeWidth=".5"/>
+    <rect x="0" y="70" width="120" height="10" fill="#fff" stroke="#E2E8F0" strokeWidth=".5"/>
+  </svg>
+</template>
+</body>
+</html>
