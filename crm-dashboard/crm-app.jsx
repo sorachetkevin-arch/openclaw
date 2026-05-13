@@ -108,24 +108,37 @@ function NewCampaignModal({ onClose, onSave }) {
 
 function CampaignsView() {
   const [showModal, setShowModal] = useState(false);
-  const [campaigns, setCampaigns] = useState([
-    { name: 'Summer Sale 2026',  source: 'Facebook Ads',   status: 'active',  leads: 248, won: 42, budget: '฿50,000',  spent: '฿38,200', conv: 17 },
-    { name: 'Q2 Google Search',  source: 'Google Ads',     status: 'active',  leads: 195, won: 38, budget: '฿80,000',  spent: '฿61,500', conv: 19 },
-    { name: 'LINE OA Blast May', source: 'LINE Ads',       status: 'active',  leads: 180, won: 48, budget: '฿30,000',  spent: '฿29,800', conv: 27 },
-    { name: 'Referral Program',  source: 'Referral',       status: 'active',  leads: 150, won: 52, budget: '฿10,000',  spent: '฿7,400',  conv: 35 },
-    { name: 'Apr Email Blast',   source: 'Email Campaign', status: 'ended',   leads: 90,  won: 18, budget: '฿5,000',   spent: '฿5,000',  conv: 20 },
-    { name: 'Mar Brand Awareness',source: 'Facebook Ads',  status: 'ended',   leads: 320, won: 28, budget: '฿120,000', spent: '฿118,600',conv: 9  },
-  ]);
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errMsg, setErrMsg] = useState('');
   const statusCfg = { active: ['#ECFDF5','#10B981'], paused: ['#FFF7ED','#F97316'], ended: ['#F1F5F9','#94A3B8'], draft: ['#F5F3FF','#8B5CF6'] };
 
-  const handleSave = (form) => {
-    const budgetNum = parseInt(form.budget.replace(/[฿,]/g,'')) || 0;
-    setCampaigns(cs => [...cs, {
-      name: form.name, source: form.source, status: form.status,
-      leads: 0, won: 0, conv: 0,
-      budget: budgetNum ? `฿${budgetNum.toLocaleString()}` : '฿0',
-      spent: '฿0',
-    }]);
+  useEffect(() => {
+    window.api.campaigns.list()
+      .then(rows => setCampaigns(rows.map(c => ({
+        id: c.id, name: c.name, source: c.source, status: c.status,
+        leads: c.leads, won: c.conversions,
+        conv: c.leads > 0 ? Math.round((c.conversions / c.leads) * 100) : 0,
+        budget: `฿${(c.budget || 0).toLocaleString()}`,
+        spent:  `฿${(c.spent  || 0).toLocaleString()}`,
+      }))))
+      .catch(err => setErrMsg(err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async (form) => {
+    const budgetNum = parseInt(String(form.budget).replace(/[฿,]/g,'')) || 0;
+    try {
+      const c = await window.api.campaigns.create({
+        name: form.name, source: form.source, status: form.status,
+        budget: budgetNum, utmSource: form.utmSource, utmMedium: form.utmMedium, utmCampaign: form.utmCampaign,
+      });
+      setCampaigns(cs => [{
+        id: c.id, name: c.name, source: c.source, status: c.status,
+        leads: 0, won: 0, conv: 0,
+        budget: `฿${(c.budget || 0).toLocaleString()}`, spent: '฿0',
+      }, ...cs]);
+    } catch (err) { setErrMsg(err.message); }
   };
 
   return (
@@ -134,7 +147,7 @@ function CampaignsView() {
       <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12 }}>
         <div>
           <h1 style={{ fontSize:22,fontWeight:700,color:'#0F172A',margin:0 }}>Campaigns</h1>
-          <p style={{ fontSize:13,color:'#64748B',margin:'4px 0 0' }}>{campaigns.length} campaigns · Track spend & conversion</p>
+          <p style={{ fontSize:13,color:'#64748B',margin:'4px 0 0' }}>{loading ? 'Loading…' : `${campaigns.length} campaigns · Track spend & conversion`}{errMsg && ` · ${errMsg}`}</p>
         </div>
         <button onClick={()=>setShowModal(true)} style={{ background:'#6366F1',color:'white',border:'none',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer' }}>+ New Campaign</button>
       </div>
@@ -528,9 +541,9 @@ function TopBar({ page, onSearch, onNavigate, currentUser }) {
     { icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="#4ADE80"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10H6V9h12v3zm0-4H6V5h12v3z"/></svg>, label:'LINE OA Settings', action: () => { onNavigate('line-oa'); setShowUserMenu(false); } },
     { divider: true },
     { icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="#EF4444"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>, label:'Sign Out', action: () => {
-      localStorage.removeItem('crm_auth');
-      sessionStorage.removeItem('crm_auth');
-      window.location.href = 'Login.html';
+      (window.auth?.logout?.() || Promise.resolve()).finally(() => {
+        window.location.href = 'Login.html';
+      });
     }, danger: true },
   ];
 
@@ -652,18 +665,23 @@ function CRMApp() {
   const [tweaks, setTweaks] = useState(TWEAK_DEFAULTS);
   const [showTweaks, setShowTweaks] = useState(false);
 
-  const currentUser = (() => {
-    try {
-      const stored = localStorage.getItem('crm_auth') || sessionStorage.getItem('crm_auth');
-      if (stored) return JSON.parse(stored);
-    } catch(e) {}
-    return { name: 'Admin สมศักดิ์', role: 'SUPER_ADMIN', initials: 'SA', color: 'linear-gradient(135deg,#F59E0B,#EF4444)' };
-  })();
+  const sessionUser = window.auth?.session()?.user;
+  const currentUser = sessionUser
+    ? {
+        name: sessionUser.name,
+        email: sessionUser.email,
+        role: sessionUser.role,
+        initials: sessionUser.name.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase(),
+        color: sessionUser.color
+          ? `linear-gradient(135deg, ${sessionUser.color}, ${sessionUser.color})`
+          : 'linear-gradient(135deg,#6366F1,#8B5CF6)',
+      }
+    : { name: 'Loading…', role: 'USER', initials: '..', color: 'linear-gradient(135deg,#94A3B8,#64748B)' };
 
   // Auth guard — redirect to login if no session
   useEffect(() => {
-    const auth = localStorage.getItem('crm_auth') || sessionStorage.getItem('crm_auth');
-    if (!auth) window.location.href = 'Login.html';
+    const s = window.auth?.session();
+    if (!s || !s.token) window.location.href = 'Login.html';
   }, []);
 
   // Tweaks protocol

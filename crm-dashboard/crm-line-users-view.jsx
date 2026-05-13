@@ -466,7 +466,9 @@ function RemoveUserModal({ user, onClose, onConfirm }) {
 }
 
 function UsersView() {
-  const [users, setUsers] = useState(INITIAL_USERS);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errMsg, setErrMsg] = useState('');
   const [showInvite, setShowInvite] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [removeUser, setRemoveUser] = useState(null);
@@ -474,25 +476,42 @@ function UsersView() {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [search, setSearch] = useState('');
 
+  React.useEffect(() => {
+    window.api.users.list()
+      .then(us => setUsers(us.map(u => ({ ...u, joined: u.joinedAt }))))
+      .catch(err => setErrMsg(err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
   const filtered = users
     .filter(u => filterRole==='ALL' || u.role===filterRole)
     .filter(u => filterStatus==='ALL' || u.status===filterStatus)
     .filter(u => !search || [u.name,u.email,u.dept||''].join(' ').toLowerCase().includes(search.toLowerCase()));
 
-  const handleInvite = form => {
-    setUsers(us => [...us, {
-      id: Date.now(), name: form.name, email: form.email, phone: form.phone,
-      role: form.role, dept: form.dept, leads: 0, status: 'active',
-      joined: new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}),
-      lineLinked: false,
-    }]);
+  const handleInvite = async form => {
+    try {
+      const u = await window.api.users.create(form);
+      setUsers(us => [...us, { ...u, joined: u.joinedAt }]);
+    } catch (err) { setErrMsg(err.message); }
   };
 
-  const handleEdit = form => setUsers(us => us.map(u => u.id===form.id ? form : u));
+  const handleEdit = async form => {
+    try {
+      const u = await window.api.users.update(form.id, form);
+      setUsers(us => us.map(x => x.id === u.id ? { ...u, joined: u.joinedAt } : x));
+    } catch (err) { setErrMsg(err.message); }
+  };
 
-  const handleRemove = (id, action) => {
-    if (action==='remove') setUsers(us => us.filter(u => u.id!==id));
-    else setUsers(us => us.map(u => u.id===id ? {...u, status:'inactive'} : u));
+  const handleRemove = async (id, action) => {
+    try {
+      if (action === 'remove') {
+        await window.api.users.remove(id);
+        setUsers(us => us.filter(u => u.id !== id));
+      } else {
+        const u = await window.api.users.update(id, { status: 'inactive' });
+        setUsers(us => us.map(x => x.id === id ? { ...u, joined: u.joinedAt } : x));
+      }
+    } catch (err) { setErrMsg(err.message); }
   };
 
   const stats = [
@@ -513,7 +532,7 @@ function UsersView() {
       <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12 }}>
         <div>
           <h1 style={{ fontSize:22,fontWeight:700,color:'#0F172A',margin:0 }}>Users & Admin</h1>
-          <p style={{ fontSize:13,color:'#64748B',margin:'4px 0 0' }}>Manage team members, roles and access control</p>
+          <p style={{ fontSize:13,color:'#64748B',margin:'4px 0 0' }}>{loading ? 'Loading…' : 'Manage team members, roles and access control'}{errMsg && ` · ${errMsg}`}</p>
         </div>
         <button onClick={()=>setShowInvite(true)} style={{ background:'#6366F1',color:'white',border:'none',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:6 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>

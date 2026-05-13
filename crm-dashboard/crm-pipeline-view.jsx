@@ -1,6 +1,6 @@
 
 // CRM Pipeline Kanban View — Drag & drop lead status
-const { useState, useRef } = React;
+const { useState, useRef, useEffect } = React;
 
 const PIPELINE_STAGES = [
   { id: 'NEW',           label: 'New',           color: '#6366F1', bg: '#EEF2FF', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> },
@@ -172,26 +172,48 @@ function LeadDetailPanel({ lead, onClose, onStatusChange }) {
 }
 
 function PipelineView() {
-  const [leads, setLeads] = useState(PIPELINE_LEADS);
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errMsg, setErrMsg] = useState('');
   const [dragging, setDragging] = useState(null);
   const [selected, setSelected] = useState(null);
+
+  const fmt = l => {
+    const bud = l.budget || 0;
+    const short = bud >= 1000 ? `฿${Math.round(bud/1000)}K` : `฿${bud}`;
+    const daysAgo = l.updatedAt ? Math.max(0, Math.floor((Date.now() - new Date(l.updatedAt).getTime()) / 86400000)) : 0;
+    return {
+      id: l.id, name: l.name, company: l.company, source: l.source,
+      score: l.score, status: l.status, assignee: l.assignee || '—',
+      budget: short, days: daysAgo, _rawBudget: bud,
+    };
+  };
+
+  useEffect(() => {
+    window.api.leads.list()
+      .then(rows => setLeads(rows.map(fmt)))
+      .catch(err => setErrMsg(err.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const persistStatus = (leadId, newStatus) => {
+    window.api.leads.update(leadId, { status: newStatus }).catch(err => setErrMsg(err.message));
+  };
 
   const handleDrop = (stageId) => {
     if (!dragging) return;
     setLeads(ls => ls.map(l => l.id === dragging.id ? { ...l, status: stageId } : l));
+    persistStatus(dragging.id, stageId);
     setDragging(null);
   };
 
   const handleStatusChange = (leadId, newStatus) => {
     setLeads(ls => ls.map(l => l.id === leadId ? { ...l, status: newStatus } : l));
     setSelected(prev => prev ? { ...prev, status: newStatus } : null);
+    persistStatus(leadId, newStatus);
   };
 
-  const totalValue = leads.filter(l=>l.status!=='LOST').reduce((s,l)=>{
-    const v=parseInt(l.budget?.replace(/[฿K,]/g,''))||0;
-    const m=l.budget?.includes('K')?1000:1;
-    return s+v*m;
-  },0);
+  const totalValue = leads.filter(l=>l.status!=='LOST').reduce((s,l) => s + (l._rawBudget || 0), 0);
 
   return (
     <div style={{ display:'flex',flexDirection:'column',gap:20,height:'100%' }}>
@@ -200,7 +222,7 @@ function PipelineView() {
         <div>
           <h1 style={{ fontSize:22,fontWeight:700,color:'#0F172A',margin:0 }}>Pipeline</h1>
           <p style={{ fontSize:13,color:'#64748B',margin:'4px 0 0' }}>
-            {leads.length} leads · Pipeline value ฿{(totalValue/1000000).toFixed(2)}M · Drag cards to update stage
+            {loading ? 'Loading…' : `${leads.length} leads · Pipeline value ฿${(totalValue/1000000).toFixed(2)}M · Drag cards to update stage`}{errMsg && ` · ${errMsg}`}
           </p>
         </div>
         <div style={{ display:'flex',gap:8,flexWrap:'wrap' }}>

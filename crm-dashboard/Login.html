@@ -21,6 +21,7 @@
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="api-client.js"></script>
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
@@ -33,8 +34,8 @@ const DEMO_ACCOUNTS = [
 ];
 
 const GOOGLE_ACCOUNTS = [
-  { name:'สมชาย ใจดี',   email:'somchai@gmail.com',   role:'ADMIN',       initials:'สช', color:'linear-gradient(135deg,#4285F4,#34A853)' },
-  { name:'Natthawut K.', email:'natthawut@gmail.com', role:'USER',        initials:'NK', color:'linear-gradient(135deg,#EA4335,#FBBC05)' },
+  { name:'Admin สมศักดิ์', email:'admin@crm.th', role:'SUPER_ADMIN', initials:'SA', color:'linear-gradient(135deg,#4285F4,#34A853)' },
+  { name:'John D.',        email:'john@crm.th',  role:'ADMIN',       initials:'JD', color:'linear-gradient(135deg,#EA4335,#FBBC05)' },
 ];
 
 function GoogleIcon() {
@@ -111,33 +112,38 @@ function LoginPage() {
 
   // Check if already logged in
   useEffect(() => {
-    const auth = localStorage.getItem('crm_auth');
-    if (auth) window.location.href = 'CRM Dashboard.html';
+    const s = window.auth?.session();
+    if (s && s.token) window.location.href = 'CRM Dashboard.html';
   }, []);
 
-  const doLogin = (user) => {
-    const authData = { name: user.name, email: user.email, role: user.role, initials: user.initials, color: user.color, loginTime: Date.now() };
-    if (remember) localStorage.setItem('crm_auth', JSON.stringify(authData));
-    else sessionStorage.setItem('crm_auth', JSON.stringify(authData));
-    setSuccess(`Welcome back, ${user.name}!`);
-    setTimeout(() => { window.location.href = 'CRM Dashboard.html'; }, 800);
+  const finishLogin = (r) => {
+    setSuccess(`Welcome back, ${r.user.name}!`);
+    setTimeout(() => { window.location.href = 'CRM Dashboard.html'; }, 600);
   };
 
-  const handleEmailLogin = () => {
+  const handleEmailLogin = async () => {
     setError('');
     if (!email || !password) { setError('Please enter email and password'); return; }
     setLoading(true);
-    setTimeout(() => {
-      const user = DEMO_ACCOUNTS.find(a => a.email === email && a.password === password);
-      if (user) { doLogin(user); }
-      else { setLoading(false); setError('Invalid email or password. Try a demo account below.'); }
-    }, 1200);
+    try {
+      const r = await window.api.auth.login(email, password, remember);
+      finishLogin(r);
+    } catch (err) {
+      setLoading(false);
+      setError(err.message || 'Invalid email or password.');
+    }
   };
 
-  const handleGoogleSelect = (acc) => {
+  const handleGoogleSelect = async (acc) => {
     setShowGoogle(false);
     setLoading(true);
-    setTimeout(() => doLogin({ ...acc }), 1000);
+    try {
+      const r = await window.api.auth.google(acc.email, remember);
+      finishLogin(r);
+    } catch (err) {
+      setLoading(false);
+      setError(err.message || 'Google sign-in failed (account must be registered).');
+    }
   };
 
   const iStyle = {

@@ -214,16 +214,28 @@ function LineAreaChart({ data, color = '#6366F1', height = 100 }) {
 }
 
 function MainDashboard({ onNavigate }) {
+  const [summary, setSummary] = useState(null);
+  const [errMsg, setErrMsg] = useState('');
+  React.useEffect(() => {
+    window.api.dashboard.summary().then(setSummary).catch(err => setErrMsg(err.message));
+  }, []);
+
+  const counts = summary?.counts || {};
+  const total = counts.total || 0;
+  const conv = total > 0 ? ((counts.won || 0) / total * 100).toFixed(1) + '%' : '0%';
+  const revenue = (counts.revenue || 0);
+  const revFmt = revenue >= 1_000_000 ? `฿${(revenue/1_000_000).toFixed(2)}M` : `฿${revenue.toLocaleString()}`;
+
   const kpiData = [
-    { label: 'Total Leads',      value: '1,284', subLabel: 'All time',     change: 12.4,  color: '#6366F1', icon: 'users',    sparkData: [30,45,38,52,61,58,72,68,80,75,90,95] },
-    { label: 'New Today',        value: '34',    subLabel: 'May 12, 2026', change: 8.2,   color: '#06B6D4', icon: 'plus',     sparkData: [12,18,15,22,19,28,24,30,28,32,29,34] },
-    { label: 'This Month',       value: '312',   subLabel: 'May 2026',     change: 5.7,   color: '#8B5CF6', icon: 'calendar', sparkData: [180,195,210,230,240,255,265,280,290,300,308,312] },
-    { label: 'Conversion Rate',  value: '18.4%', subLabel: 'Won / Total',  change: -2.1,  color: '#F59E0B', icon: 'chart',    sparkData: [20,22,19,21,18,17,19,18,20,19,18,18.4] },
-    { label: 'Won Leads',        value: '237',   subLabel: 'All time',     change: 14.3,  color: '#10B981', icon: 'check',    sparkData: [80,95,110,120,140,155,165,180,195,210,225,237] },
-    { label: 'Lost Leads',       value: '89',    subLabel: 'All time',     change: -3.5,  color: '#EF4444', icon: 'xcircle',  sparkData: [40,45,50,55,60,62,65,70,75,80,85,89] },
-    { label: 'Revenue Forecast', value: '฿4.2M', subLabel: 'Pipeline value',change: 22.1, color: '#F59E0B', icon: 'money',    sparkData: [1.5,1.8,2.1,2.4,2.8,3.0,3.2,3.5,3.7,3.9,4.1,4.2] },
-    { label: 'Hot Leads',        value: '47',    subLabel: 'Score ≥80',    change: 18.0,  color: '#EF4444', icon: 'flame',    sparkData: [15,18,22,25,28,30,32,35,38,42,45,47] },
-    { label: 'Follow-up Today',  value: '18',    subLabel: 'Due tasks',    change: 0,     color: '#F59E0B', icon: 'bell',     sparkData: [10,12,15,13,16,14,18,15,17,16,19,18] },
+    { label: 'Total Leads',      value: total.toLocaleString(),         subLabel: 'All time',      change: 0,   color: '#6366F1', icon: 'users',    sparkData: [30,45,38,52,61,58,72,68,80,75,90,total] },
+    { label: 'New',              value: String(counts.new || 0),        subLabel: 'Status NEW',    change: 0,   color: '#06B6D4', icon: 'plus',     sparkData: [12,18,15,22,19,28,24,30,28,32,29, counts.new || 0] },
+    { label: 'Qualified',        value: String(counts.qualified || 0),  subLabel: 'In pipeline',   change: 0,   color: '#8B5CF6', icon: 'calendar', sparkData: [10,20,18,22,25,28,30,32,35,38,40, counts.qualified || 0] },
+    { label: 'Conversion Rate',  value: conv,                           subLabel: 'Won / Total',   change: 0,   color: '#F59E0B', icon: 'chart',    sparkData: [20,22,19,21,18,17,19,18,20,19,18, Number(conv)||0] },
+    { label: 'Won Leads',        value: String(counts.won || 0),        subLabel: 'All time',      change: 0,   color: '#10B981', icon: 'check',    sparkData: [5,8,10,12,15,18,20,22,25,28,30, counts.won || 0] },
+    { label: 'Lost Leads',       value: String(counts.lost || 0),       subLabel: 'All time',      change: 0,   color: '#EF4444', icon: 'xcircle',  sparkData: [2,4,5,6,8,9,10,12,14,16,18, counts.lost || 0] },
+    { label: 'Revenue Forecast', value: revFmt,                         subLabel: 'Pipeline value',change: 0,   color: '#F59E0B', icon: 'money',    sparkData: [1.5,1.8,2.1,2.4,2.8,3.0,3.2,3.5,3.7,3.9,4.1, revenue/1_000_000] },
+    { label: 'Hot Leads',        value: String(counts.hot || 0),        subLabel: 'Score ≥80',     change: 0,   color: '#EF4444', icon: 'flame',    sparkData: [3,5,7,9,11,13,15,17,19,21,23, counts.hot || 0] },
+    { label: 'Follow-up',        value: String(counts.followUp || 0),   subLabel: 'Due tasks',     change: 0,   color: '#F59E0B', icon: 'bell',     sparkData: [10,12,15,13,16,14,18,15,17,16,19, counts.followUp || 0] },
   ];
 
   const leadsOverTime = [
@@ -236,21 +248,17 @@ function MainDashboard({ onNavigate }) {
     {label:'FB',value:320},{label:'Google',value:280},{label:'LINE',value:210},{label:'Organic',value:180},{label:'Ref',value:120},{label:'Email',value:90},{label:'Walk-in',value:84},
   ];
 
-  const hotLeads = [
-    { name: 'สมชาย ใจดี', source: 'Facebook Ads', company: 'ABC Corp', score: 95 },
-    { name: 'Natthawut K.', source: 'Google Ads', company: 'XYZ Ltd', score: 88 },
-    { name: 'วิภา แสนดี', source: 'LINE Ads', company: 'DEF Co', score: 84 },
-    { name: 'Priya Sharma', source: 'Referral', company: 'GHI Inc', score: 82 },
-    { name: 'มานะ รักดี', source: 'Facebook Ads', company: 'JKL Pvt', score: 80 },
-  ];
+  const hotLeads = (summary?.hotLeads || []).map(l => ({
+    name: l.name, source: l.source || '—', company: l.company || '—', score: l.score,
+  }));
 
-  const followUps = [
-    { name: 'สมชาย ใจดี', assignee: 'Sales: John D.', time: '10:00', overdue: false },
-    { name: 'วิภา แสนดี', assignee: 'Sales: Sara K.', time: '11:30', overdue: false },
-    { name: 'Priya Sharma', assignee: 'Sales: Mike T.', time: '09:00', overdue: true },
-    { name: 'มานะ รักดี', assignee: 'Sales: John D.', time: '14:00', overdue: false },
-    { name: 'Anon Lee', assignee: 'Sales: Sara K.', time: '08:30', overdue: true },
-  ];
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const followUps = (summary?.followUps || []).map(l => ({
+    name: l.name,
+    assignee: l.assignee ? `Sales: ${l.assignee}` : 'Unassigned',
+    time: (l.nextFollowUp || '').slice(0, 10) || '—',
+    overdue: l.nextFollowUp && l.nextFollowUp < todayStr,
+  }));
 
   const pipelineStages = [
     { label: 'NEW', count: 312, value: '฿2.1M', color: '#6366F1' },
@@ -267,7 +275,7 @@ function MainDashboard({ onNavigate }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', margin: 0 }}>Dashboard Overview</h1>
-          <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0' }}>Monday, 12 May 2026 · Real-time CRM data</p>
+          <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0' }}>{new Date().toLocaleDateString('en-US',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})} · Real-time CRM data{errMsg && ` · ${errMsg}`}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => onNavigate('leads')} style={{
@@ -359,9 +367,9 @@ function MainDashboard({ onNavigate }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
               <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 14 }}>Follow-up Today</div>
-              <div style={{ fontSize: 11, color: '#94A3B8' }}>18 tasks due</div>
+              <div style={{ fontSize: 11, color: '#94A3B8' }}>{followUps.length} tasks due</div>
             </div>
-            <span style={{ background: '#FEF3C7', color: '#92400E', borderRadius: 12, fontSize: 10, fontWeight: 700, padding: '2px 8px' }}>2 Overdue</span>
+            <span style={{ background: '#FEF3C7', color: '#92400E', borderRadius: 12, fontSize: 10, fontWeight: 700, padding: '2px 8px' }}>{followUps.filter(f => f.overdue).length} Overdue</span>
           </div>
           <FollowUpList items={followUps}/>
         </div>

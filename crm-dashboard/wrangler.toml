@@ -1,0 +1,9 @@
+name = "crm-lead-copilot"
+compatibility_date = "2026-05-01"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "crm_lead_copilot"
+# Fill `database_id` after running `wrangler d1 create crm_lead_copilot`.
+database_id = ""

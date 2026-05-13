@@ -1,0 +1,17 @@
+{
+  "name": "crm-lead-copilot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CRM Lead Copilot Dashboard — Cloudflare Pages + Functions + D1",
+  "scripts": {
+    "dev": "wrangler pages dev . --d1 DB=crm_lead_copilot --compatibility-date=2026-05-01",
+    "db:create": "wrangler d1 create crm_lead_copilot",
+    "db:migrate:local": "wrangler d1 execute crm_lead_copilot --local --file=./migrations/0001_init.sql && wrangler d1 execute crm_lead_copilot --local --file=./migrations/0002_seed.sql",
+    "db:migrate:remote": "wrangler d1 execute crm_lead_copilot --remote --file=./migrations/0001_init.sql && wrangler d1 execute crm_lead_copilot --remote --file=./migrations/0002_seed.sql",
+    "deploy": "wrangler pages deploy . --project-name=crm-lead-copilot",
+    "tail": "wrangler pages deployment tail --project-name=crm-lead-copilot"
+  },
+  "devDependencies": {
+    "wrangler": "^3.78.0"
+  }
+}

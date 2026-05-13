@@ -1,6 +1,6 @@
 
 // CRM Leads Management View — Full CRUD table + modal
-const { useState, useRef } = React;
+const { useState, useRef, useEffect } = React;
 
 const STATUS_CONFIG = {
   NEW:           { label: 'New',           color: '#6366F1', bg: '#EEF2FF' },
@@ -378,7 +378,9 @@ function parseCSV(text) {
 
 // ── LeadsView ────────────────────────────────────────────────────────────
 function LeadsView() {
-  const [leads, setLeads] = useState(SAMPLE_LEADS);
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errMsg, setErrMsg] = useState('');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterScore, setFilterScore] = useState('ALL');
@@ -389,6 +391,20 @@ function LeadsView() {
   const [sortDir, setSortDir] = useState('desc');
   const [csvRows, setCsvRows] = useState(null);
   const fileInputRef = useRef(null);
+
+  const fmt = l => ({
+    ...l,
+    budget: typeof l.budget === 'number' ? `฿${l.budget.toLocaleString()}` : (l.budget || ''),
+    assignee: l.assignee || '—',
+    nextFollowUp: l.nextFollowUp || '—',
+  });
+
+  useEffect(() => {
+    window.api.leads.list()
+      .then(rows => setLeads(rows.map(fmt)))
+      .catch(err => setErrMsg(err.message))
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleFileChange = e => {
     const file = e.target.files[0];
@@ -436,7 +452,7 @@ function LeadsView() {
       <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12 }}>
         <div>
           <h1 style={{ fontSize:22,fontWeight:700,color:'#0F172A',margin:0 }}>Leads</h1>
-          <p style={{ fontSize:13,color:'#64748B',margin:'4px 0 0' }}>{leads.length} total leads · {filtered.length} showing</p>
+          <p style={{ fontSize:13,color:'#64748B',margin:'4px 0 0' }}>{loading ? 'Loading…' : `${leads.length} total leads · ${filtered.length} showing`}{errMsg && ` · ${errMsg}`}</p>
         </div>
         <div style={{ display:'flex',gap:8 }}>
           <input ref={fileInputRef} type="file" accept=".csv,text/csv" style={{ display:'none' }} onChange={handleFileChange}/>
@@ -556,16 +572,28 @@ function LeadsView() {
         <CSVImportModal
           rows={csvRows}
           onClose={() => setCsvRows(null)}
-          onImport={newLeads => setLeads(ls => [...ls, ...newLeads])}
+          onImport={async newLeads => {
+            try {
+              const created = await window.api.leads.bulk(newLeads);
+              setLeads(ls => [...created.map(fmt), ...ls]);
+            } catch (err) { setErrMsg(err.message); }
+          }}
         />
       )}
       {(modalLead || showNew) && (
         <LeadModal
           lead={showNew ? null : modalLead}
           onClose={()=>{ setModalLead(null); setShowNew(false); }}
-          onSave={form => {
-            if (showNew) setLeads(ls => [...ls, { ...form, id: Date.now(), score: 50, tags: [] }]);
-            else setLeads(ls => ls.map(l => l.id === modalLead.id ? { ...l, ...form } : l));
+          onSave={async form => {
+            try {
+              if (showNew) {
+                const created = await window.api.leads.create(form);
+                setLeads(ls => [fmt(created), ...ls]);
+              } else {
+                const updated = await window.api.leads.update(modalLead.id, form);
+                setLeads(ls => ls.map(l => l.id === modalLead.id ? fmt(updated) : l));
+              }
+            } catch (err) { setErrMsg(err.message); }
           }}
         />
       )}
@@ -573,7 +601,10 @@ function LeadsView() {
         <DeleteModal
           lead={deleteTarget}
           onClose={()=>setDeleteTarget(null)}
-          onConfirm={id=>setLeads(ls=>ls.filter(l=>l.id!==id))}
+          onConfirm={async id => {
+            try { await window.api.leads.remove(id); setLeads(ls => ls.filter(l => l.id !== id)); }
+            catch (err) { setErrMsg(err.message); }
+          }}
         />
       )}
     </div>

@@ -1,48 +1,145 @@
 # CRM Lead Copilot Dashboard
 
-High-fidelity prototype for a full-stack CRM with LINE OA integration. Implemented
-from the Claude Design handoff (`CRM Dashboard.html`).
+Full-stack CRM with real database — frontend served as Cloudflare Pages,
+API as Pages Functions, data in **Cloudflare D1** (SQLite). All on the
+free tier.
 
-## Files
+```
+┌────────────────────────────────┐    ┌──────────────────────┐    ┌───────────┐
+│ Static Pages (HTML + JSX + CSS)│ ─▶ │ /api/*  Pages Funcs  │ ─▶ │ D1 (SQL)  │
+│  Login.html / CRM Dashboard.html│    │  (functions/api/...) │    │ DB binding│
+└────────────────────────────────┘    └──────────────────────┘    └───────────┘
+```
 
-| File | Role |
-|------|------|
-| `CRM Dashboard.html` | Main entry — desktop dashboard (loads all JSX modules) |
-| `Login.html` | Sign-in page with simulated Google OAuth + demo accounts |
-| `LIFF Dashboard.html` | Mobile view tuned for the LINE in-app browser |
-| `crm-app.jsx` | Root `CRMApp` component, router, top bar, auth guard |
-| `crm-sidebar.jsx` | Left-rail navigation |
-| `crm-main-view.jsx` | Dashboard overview (KPI cards, sparklines, hot leads, follow-ups) |
-| `crm-leads-view.jsx` | Lead table — CRUD, CSV import, scoring, filters |
-| `crm-pipeline-view.jsx` | Kanban pipeline (drag-and-drop across 7 stages) |
-| `crm-reports-view.jsx` | Daily / Source / Sales / Campaign reports + PDF export |
-| `crm-line-users-view.jsx` | LINE OA config, chat simulator, user admin |
-| `tweaks-panel.jsx` | In-page design tweaks (colors, font scale, dark mode) |
+## File layout
 
-## Running locally
+```
+crm-dashboard/
+├── CRM Dashboard.html              Main dashboard entry
+├── Login.html                      Sign-in (calls /api/auth/login)
+├── LIFF Dashboard.html             Mobile LINE view
+├── crm-*.jsx, tweaks-panel.jsx     React (Babel-standalone) views
+├── api-client.js                   window.api / window.auth (session in localStorage)
+├── functions/
+│   ├── _middleware.js              CORS
+│   └── api/
+│       ├── _lib.js                 Helpers (sha256, sessions, serializers, scoring)
+│       ├── auth/                   login, logout, me
+│       ├── leads/                  list/create/get/patch/delete + bulk import
+│       ├── users/                  list/create/patch/delete
+│       ├── campaigns/              list/create/patch/delete
+│       ├── activities/[leadId].js  per-lead activity log
+│       └── dashboard/summary.js    KPIs + hot leads + follow-ups
+├── migrations/
+│   ├── 0001_init.sql               schema
+│   └── 0002_seed.sql               demo users + leads + campaigns
+├── wrangler.toml
+└── package.json
+```
 
-The pages use React 18 + Babel Standalone via CDN. Browsers block loading
-`type="text/babel" src="..."` from `file://` URLs, so serve the folder over HTTP:
+## Deploy to Cloudflare (free tier)
+
+> Prereqs: a free Cloudflare account, Node 18+.
 
 ```bash
 cd crm-dashboard
-python3 -m http.server 8000
-# then open http://localhost:8000/Login.html
+npm install                          # installs wrangler
+
+npx wrangler login                   # opens browser, signs you in
+
+# 1. Create the D1 database
+npx wrangler d1 create crm_lead_copilot
+# → copy the `database_id` it prints and paste it into wrangler.toml
+#   under [[d1_databases]] -> database_id = "<the-uuid>"
+
+# 2. Apply schema + seed to the remote D1
+npm run db:migrate:remote
+
+# 3. Deploy the site (first run prompts for project name; use "crm-lead-copilot")
+npm run deploy
 ```
 
-## Demo accounts
+After the first deploy Cloudflare gives you a URL like
+`https://crm-lead-copilot.pages.dev` — open it, sign in with the demo
+accounts below, and the dashboard pulls live data from D1.
 
-| Email | Password | Role |
-|-------|----------|------|
-| `admin@crm.th` | `demo1234` | SUPER_ADMIN |
-| `john@crm.th`  | `demo1234` | ADMIN |
-| `sara@crm.th`  | `demo1234` | USER |
+### Binding the D1 database to Pages (one-time, after first deploy)
 
-After signing in you land on `CRM Dashboard.html`. Sign Out clears the
-`localStorage`/`sessionStorage` session and returns to `Login.html`.
+Cloudflare dashboard → **Workers & Pages → crm-lead-copilot → Settings →
+Functions → D1 database bindings → Add**
 
-## Tech notes for production port
+| Variable name | D1 database         |
+|---------------|---------------------|
+| `DB`          | `crm_lead_copilot`  |
 
-The prototype is intentionally a single-bundle React app. The handoff README
-recommends Next.js 14 + TypeScript + Tailwind + Prisma + Postgres; the visual
-output here is the contract to match — internal structure can be refactored.
+Redeploy (`npm run deploy`) to pick up the binding.
+
+## Local development
+
+```bash
+# create local D1 (stored in .wrangler/state)
+npm run db:migrate:local
+
+# run pages + functions locally
+npm run dev      # http://localhost:8788
+```
+
+The dev server hot-reloads functions, serves the static files, and runs
+the API against a local SQLite copy of D1.
+
+## Demo accounts (seeded)
+
+All have password `demo1234`.
+
+| Email           | Role          |
+|-----------------|---------------|
+| `admin@crm.th`  | SUPER_ADMIN   |
+| `john@crm.th`   | ADMIN         |
+| `sara@crm.th`   | USER          |
+| `mike@crm.th`   | USER          |
+| `amy@crm.th`    | USER (inactive) |
+
+## API surface
+
+| Method | Path                          | Notes                                |
+|--------|-------------------------------|--------------------------------------|
+| POST   | `/api/auth/login`             | `{ email, password }` or `{ email, provider:"google" }` |
+| POST   | `/api/auth/logout`            |                                      |
+| GET    | `/api/auth/me`                |                                      |
+| GET    | `/api/leads?status=&q=`       | list with filters                    |
+| POST   | `/api/leads`                  | create — auto lead scoring           |
+| GET    | `/api/leads/:id`              |                                      |
+| PATCH  | `/api/leads/:id`              | partial update; logs status changes  |
+| DELETE | `/api/leads/:id`              |                                      |
+| POST   | `/api/leads/bulk`             | CSV import → `{ leads: [...] }`      |
+| GET    | `/api/users`                  | with lead-count per user             |
+| POST   | `/api/users`                  | admin only                           |
+| PATCH  | `/api/users/:id`              |                                      |
+| DELETE | `/api/users/:id`              | super-admin only                     |
+| GET    | `/api/campaigns`              | + lead count + conversions           |
+| POST   | `/api/campaigns`              |                                      |
+| PATCH  | `/api/campaigns/:id`          |                                      |
+| DELETE | `/api/campaigns/:id`          |                                      |
+| GET    | `/api/activities/:leadId`     |                                      |
+| POST   | `/api/activities/:leadId`     | `{ action, note }`                   |
+| GET    | `/api/dashboard/summary`      | KPI counts + hot leads + follow-ups  |
+
+All routes (except `/api/auth/login`) require `Authorization: Bearer <token>`.
+The frontend `api-client.js` handles this; tokens go to `localStorage`
+(persistent) or `sessionStorage` (Remember Me off).
+
+## Security notes for a production hand-off
+
+This implementation prioritizes the “make it real, ship to free tier”
+goal. Before going to production:
+
+- Replace SHA-256 password hashing with bcrypt/argon2 via Workers
+  bindings or move auth to Cloudflare Access / Auth0 / Clerk.
+- Treat the simulated Google login (`provider: "google"`) as a fixture
+  for demos only — wire real OAuth (PKCE flow) once a domain is set up.
+- Add rate limiting on `/api/auth/login` and `/api/leads/capture` (use
+  Cloudflare Turnstile or a Workers KV-backed limiter).
+- Validate LINE webhook signatures (HMAC-SHA256) before trusting
+  inbound messages.
+- Enforce role-based row visibility (USER role should only see leads
+  where `assignee_id` matches their `user.id`).
