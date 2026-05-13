@@ -113,12 +113,12 @@ function LoginPage() {
   // Check if already logged in
   useEffect(() => {
     const s = window.auth?.session();
-    if (s && s.token) window.location.href = 'CRM Dashboard.html';
+    if (s && s.token) window.location.href = 'dashboard.html';
   }, []);
 
   const finishLogin = (r) => {
     setSuccess(`Welcome back, ${r.user.name}!`);
-    setTimeout(() => { window.location.href = 'CRM Dashboard.html'; }, 600);
+    setTimeout(() => { window.location.href = 'dashboard.html'; }, 600);
   };
 
   const handleEmailLogin = async () => {

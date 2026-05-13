@@ -1,9 +1,21 @@
 name = "crm-lead-copilot"
-compatibility_date = "2026-05-01"
+compatibility_date = "2025-07-18"
 pages_build_output_dir = "."
 
+# Local development — uses a local SQLite file.
+# Run `npm run db:migrate:local` to seed the local DB.
 [[d1_databases]]
 binding = "DB"
 database_name = "crm_lead_copilot"
-# Fill `database_id` after running `wrangler d1 create crm_lead_copilot`.
 database_id = "local-dev-crm"
+
+# Production deployment — MUST fill in a real database_id before deploying:
+#   1. npx wrangler d1 create crm_lead_copilot
+#   2. Copy the returned database_id below (env.production block)
+#   3. npm run db:migrate:remote
+#   4. npm run deploy
+[env.production]
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "crm_lead_copilot"
+database_id = ""   # <-- paste real UUID here
