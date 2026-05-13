@@ -6,4 +6,4 @@ pages_build_output_dir = "."
 binding = "DB"
 database_name = "crm_lead_copilot"
 # Fill `database_id` after running `wrangler d1 create crm_lead_copilot`.
-database_id = ""
+database_id = "local-dev-crm"

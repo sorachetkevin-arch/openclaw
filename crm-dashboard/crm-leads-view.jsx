@@ -51,10 +51,10 @@ function ScoreBadge({ score }) {
   );
 }
 
-function LeadModal({ lead, onClose, onSave }) {
+function LeadModal({ lead, onClose, onSave, users = [] }) {
   const [form, setForm] = useState(lead || {
     name:'', phone:'', email:'', company:'', source:'', status:'NEW',
-    budget:'', interest:'', assignee:'', tags:'', notes:'', lineId:'',
+    budget:'', interest:'', assigneeId:'', tags:'', notes:'', lineId:'',
     campaign:'', medium:'', utmSource:'', utmCampaign:'',
   });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -184,9 +184,9 @@ function LeadModal({ lead, onClose, onSave }) {
               </div>
               <div>
                 <label style={labelStyle}>Assigned To</label>
-                <select value={form.assignee||''} onChange={e=>set('assignee',e.target.value)} style={inputStyle}>
+                <select value={form.assigneeId||''} onChange={e=>set('assigneeId',e.target.value)} style={inputStyle}>
                   <option value="">Assign to...</option>
-                  {['John D.','Sara K.','Mike T.','Amy R.'].map(u=><option key={u}>{u}</option>)}
+                  {users.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               </div>
             </div>
@@ -379,6 +379,7 @@ function parseCSV(text) {
 // ── LeadsView ────────────────────────────────────────────────────────────
 function LeadsView() {
   const [leads, setLeads] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errMsg, setErrMsg] = useState('');
   const [search, setSearch] = useState('');
@@ -396,13 +397,18 @@ function LeadsView() {
     ...l,
     budget: typeof l.budget === 'number' ? `฿${l.budget.toLocaleString()}` : (l.budget || ''),
     assignee: l.assignee || '—',
+    assigneeId: l.assigneeId || '',
     nextFollowUp: l.nextFollowUp || '—',
   });
 
   useEffect(() => {
-    window.api.leads.list()
-      .then(rows => setLeads(rows.map(fmt)))
-      .catch(err => setErrMsg(err.message))
+    Promise.all([
+      window.api.leads.list(),
+      window.api.users.list(),
+    ]).then(([rows, us]) => {
+      setLeads(rows.map(fmt));
+      setUsers(us.filter(u => u.status === 'active'));
+    }).catch(err => setErrMsg(err.message))
       .finally(() => setLoading(false));
   }, []);
 
@@ -583,6 +589,7 @@ function LeadsView() {
       {(modalLead || showNew) && (
         <LeadModal
           lead={showNew ? null : modalLead}
+          users={users}
           onClose={()=>{ setModalLead(null); setShowNew(false); }}
           onSave={async form => {
             try {

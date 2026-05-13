@@ -52,7 +52,6 @@ function NewCampaignModal({ onClose, onSave }) {
                   <option value="active">Active</option>
                   <option value="paused">Paused</option>
                   <option value="ended">Ended</option>
-                  <option value="draft">Draft</option>
                 </select>
               </div>
               <div>
@@ -131,7 +130,8 @@ function CampaignsView() {
     try {
       const c = await window.api.campaigns.create({
         name: form.name, source: form.source, status: form.status,
-        budget: budgetNum, utmSource: form.utmSource, utmMedium: form.utmMedium, utmCampaign: form.utmCampaign,
+        budget: budgetNum, utmSource: form.utm_source, utmMedium: form.utm_medium, utmCampaign: form.utm_campaign,
+        startDate: form.startDate, endDate: form.endDate,
       });
       setCampaigns(cs => [{
         id: c.id, name: c.name, source: c.source, status: c.status,
@@ -154,7 +154,9 @@ function CampaignsView() {
       <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:16 }}>
         {campaigns.map((c,i) => {
           const [sbg, scol] = statusCfg[c.status];
-          const spentPct = Math.round((parseInt(c.spent.replace(/[฿,]/g,''))/parseInt(c.budget.replace(/[฿,]/g,'')))*100);
+          const spentNum = parseInt(c.spent.replace(/[฿,]/g,'')) || 0;
+          const budgetNum2 = parseInt(c.budget.replace(/[฿,]/g,'')) || 1;
+          const spentPct = Math.min(100, Math.round((spentNum / budgetNum2) * 100));
           return (
             <div key={i} style={{ background:'#fff',borderRadius:12,padding:'18px 20px',border:'1px solid #E2E8F0',boxShadow:'0 1px 3px rgba(0,0,0,0.04)' }}>
               <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12 }}>
