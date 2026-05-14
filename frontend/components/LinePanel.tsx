@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Job, JobStatus } from '../types';
 import { INSECT_LABELS, INSECT_EMOJI, formatPrice, formatDate, formatDateTime } from '../constants';
 import { Icon } from './Icons';
@@ -9,10 +9,16 @@ interface Props {
 
 function buildLineUrl(lineId: string): string {
   const id = lineId.startsWith('@') ? lineId : `~${lineId}`;
-  return `https://line.me/R/ti/p/${id}`;
+  return `https://line.me/R/ti/p/${encodeURIComponent(id)}`;
 }
 
-function generateMessage(job: Job, template: 'quote' | 'confirm' | 'remind' | 'complete'): string {
+type TemplateKey = 'quote' | 'confirm' | 'remind' | 'complete';
+
+function compact(lines: (string | null)[]): string {
+  return lines.filter((l): l is string => l !== null).join('\n');
+}
+
+function generateMessage(job: Job, template: TemplateKey): string {
   const insects = job.insectTypes.map(t => `${INSECT_EMOJI[t]}${INSECT_LABELS[t]}`).join(', ');
   const price = formatPrice(job.estimatedPrice);
   const finalPrice = job.finalPrice ? formatPrice(job.finalPrice) : price;
@@ -35,35 +41,39 @@ function generateMessage(job: Job, template: 'quote' | 'confirm' | 'remind' | 'c
 สนใจสอบถามเพิ่มเติมได้เลยนะครับ 😊`;
 
     case 'confirm':
-      return `สวัสดีครับ คุณ${job.customerName} 🙏
-
-✅ ยืนยันการจองบริการกำจัดแมลงแล้วครับ
-
-🐛 บริการ: ${insects}
-📍 สถานที่: ${job.address}
-💰 ราคา: ${price}
-${job.scheduledDate ? `📅 วันเวลา: ${formatDateTime(job.scheduledDate)}` : ''}
-${job.technician ? `👷 ช่างผู้รับผิดชอบ: ${job.technician}` : ''}
-
-📋 กรุณาเตรียมความพร้อม:
-• เก็บอาหาร/ภาชนะให้มิดชิด
-• ย้ายสัตว์เลี้ยงออกจากพื้นที่
-• เปิดประตู-หน้าต่างไว้รอ
-
-ขอบคุณที่ไว้วางใจบริการของเราครับ 🙏`;
+      return compact([
+        `สวัสดีครับ คุณ${job.customerName} 🙏`,
+        '',
+        '✅ ยืนยันการจองบริการกำจัดแมลงแล้วครับ',
+        '',
+        `🐛 บริการ: ${insects}`,
+        `📍 สถานที่: ${job.address}`,
+        `💰 ราคา: ${price}`,
+        job.scheduledDate ? `📅 วันเวลา: ${formatDateTime(job.scheduledDate)}` : null,
+        job.technician ? `👷 ช่างผู้รับผิดชอบ: ${job.technician}` : null,
+        '',
+        '📋 กรุณาเตรียมความพร้อม:',
+        '• เก็บอาหาร/ภาชนะให้มิดชิด',
+        '• ย้ายสัตว์เลี้ยงออกจากพื้นที่',
+        '• เปิดประตู-หน้าต่างไว้รอ',
+        '',
+        'ขอบคุณที่ไว้วางใจบริการของเราครับ 🙏',
+      ]);
 
     case 'remind':
-      return `สวัสดีครับ คุณ${job.customerName} 🙏
-
-⏰ แจ้งเตือนนัดหมายบริการกำจัดแมลง
-
-${job.scheduledDate ? `📅 วัน-เวลา: ${formatDateTime(job.scheduledDate)}` : ''}
-📍 สถานที่: ${job.address}
-${job.technician ? `👷 ช่าง: ${job.technician}` : ''}
-
-กรุณาเตรียมความพร้อม และหากต้องการเปลี่ยนแปลงนัดหมาย รบกวนแจ้งล่วงหน้าด้วยนะครับ
-
-ขอบคุณครับ 😊`;
+      return compact([
+        `สวัสดีครับ คุณ${job.customerName} 🙏`,
+        '',
+        '⏰ แจ้งเตือนนัดหมายบริการกำจัดแมลง',
+        '',
+        job.scheduledDate ? `📅 วัน-เวลา: ${formatDateTime(job.scheduledDate)}` : null,
+        `📍 สถานที่: ${job.address}`,
+        job.technician ? `👷 ช่าง: ${job.technician}` : null,
+        '',
+        'กรุณาเตรียมความพร้อม และหากต้องการเปลี่ยนแปลงนัดหมาย รบกวนแจ้งล่วงหน้าด้วยนะครับ',
+        '',
+        'ขอบคุณครับ 😊',
+      ]);
 
     case 'complete':
       return `สวัสดีครับ คุณ${job.customerName} 🙏
@@ -99,12 +109,33 @@ const COLOR_CLASSES: Record<string, string> = {
 export const LinePanel: React.FC<Props> = ({ job }) => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
   const copyText = (key: string, text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
+    const confirm = () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
       setCopiedKey(key);
-      setTimeout(() => setCopiedKey(null), 2000);
-    });
+      timerRef.current = setTimeout(() => setCopiedKey(null), 2000);
+    };
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(confirm).catch(() => fallbackCopy(text, confirm));
+    } else {
+      fallbackCopy(text, confirm);
+    }
+  };
+
+  const fallbackCopy = (text: string, onSuccess: () => void) => {
+    const el = document.createElement('textarea');
+    el.value = text;
+    el.style.position = 'fixed';
+    el.style.opacity = '0';
+    document.body.appendChild(el);
+    el.select();
+    if (document.execCommand('copy')) onSuccess();
+    document.body.removeChild(el);
   };
 
   const relevantTemplates = Object.entries(TEMPLATE_META).filter(
@@ -156,7 +187,7 @@ export const LinePanel: React.FC<Props> = ({ job }) => {
         <div className="space-y-2">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">ข้อความที่แนะนำ</div>
           {relevantTemplates.map(([key, meta]) => {
-            const message = generateMessage(job, key as any);
+            const message = generateMessage(job, key as TemplateKey);
             const isExpanded = expandedKey === key;
             const isCopied = copiedKey === key;
             return (
