@@ -1,29 +1,40 @@
-export type AgentStatus = 'idle' | 'loading' | 'success' | 'error';
-export type Language = 'en' | 'th';
+export type InsectType = 'cockroach' | 'termite' | 'rat' | 'mosquito' | 'ant' | 'bedbugs' | 'fly' | 'other';
 
-export interface AgentDefinition {
+export type PropertyType = 'house' | 'townhouse' | 'condo' | 'office' | 'restaurant' | 'factory';
+
+export type JobStatus = 'new' | 'quoted' | 'confirmed' | 'scheduled' | 'completed' | 'cancelled';
+
+export type ContactSource = 'line' | 'facebook' | 'phone' | 'walk-in' | 'referral';
+
+export type View = 'dashboard' | 'jobs' | 'new-booking' | 'calculator' | 'job-detail';
+
+export interface Job {
   id: string;
-  name: string;
-  role: string;
-  description: string;
-  systemInstruction: string;
-  iconName: string;
-  colorClass: string;
+  createdAt: string;
+  customerName: string;
+  customerPhone: string;
+  customerLineId?: string;
+  address: string;
+  insectTypes: InsectType[];
+  propertyType: PropertyType;
+  areaM2: number;
+  problemDescription: string;
+  status: JobStatus;
+  estimatedPrice: number;
+  finalPrice?: number;
+  scheduledDate?: string;
+  completedDate?: string;
+  technician?: string;
+  notes?: string;
+  source: ContactSource;
+  warrantyMonths?: number;
+  followUpDate?: string;
 }
 
-export interface AgentState extends AgentDefinition {
-  status: AgentStatus;
-  output: string | null;
-  error?: string;
-  startTime?: number;
-  endTime?: number;
-}
-
-export interface WorkflowState {
-  topic: string;
-  language: Language;
-  isRunning: boolean;
-  isComplete: boolean;
-  agents: AgentState[];
-  currentAgentIndex: number;
+export interface PriceBreakdown {
+  insectBreakdown: { type: InsectType; label: string; price: number }[];
+  subtotal: number;
+  propertyLabel: string;
+  propertyMultiplier: number;
+  total: number;
 }
