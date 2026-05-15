@@ -1,13 +1,16 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+function getClient() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
+  return new GoogleGenerativeAI(apiKey);
+}
 
 export interface GenerateContentOptions {
   keyword: string;
   writingStyle?: string;
   targetLanguage?: string;
   promptTemplate?: string;
-  researchUrls?: string[];
 }
 
 export interface GeneratedContent {
@@ -48,9 +51,11 @@ export async function generateBlogContent(
     .replace("{writingStyle}", writingStyle)
     .replace("{targetLanguage}", targetLanguage === "th" ? "ภาษาไทย" : "English");
 
-  const userMessage = `สร้างบทความ SEO คุณภาพสูงสำหรับคีย์เวิร์ด: "${keyword}"
+  const userMessage = `${systemPrompt}
 
-กรุณาตอบในรูปแบบ JSON ดังนี้ (ตอบเฉพาะ JSON เท่านั้น):
+สร้างบทความ SEO คุณภาพสูงสำหรับคีย์เวิร์ด: "${keyword}"
+
+กรุณาตอบในรูปแบบ JSON ดังนี้ (ตอบเฉพาะ JSON เท่านั้น ไม่ต้องมี markdown code block):
 {
   "title": "หัวข้อบทความ",
   "outline": "โครงสร้างบทความ (markdown)",
@@ -69,34 +74,26 @@ export async function generateBlogContent(
 - ความยาวไม่น้อยกว่า 1,500 คำ
 - ใช้คีย์เวิร์ดอย่างเป็นธรรมชาติ`;
 
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 8096,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userMessage }],
-  });
+  const genAI = getClient();
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  const result = await model.generateContent(userMessage);
+  const text = result.response.text();
 
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("Claude did not return valid JSON");
-  }
+  // Strip markdown code fences if present
+  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("Gemini did not return valid JSON");
 
   return JSON.parse(jsonMatch[0]) as GeneratedContent;
 }
 
 export async function generateOutlineOnly(keyword: string): Promise<string> {
-  const response = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 1024,
-    messages: [
-      {
-        role: "user",
-        content: `สร้างโครงสร้างบทความ (outline) สำหรับคีย์เวิร์ด: "${keyword}"\nตอบเป็น markdown เท่านั้น`,
-      },
-    ],
-  });
+  const genAI = getClient();
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  return response.content[0].type === "text" ? response.content[0].text : "";
+  const result = await model.generateContent(
+    `สร้างโครงสร้างบทความ (outline) สำหรับคีย์เวิร์ด: "${keyword}"\nตอบเป็น markdown เท่านั้น`
+  );
+  return result.response.text();
 }
