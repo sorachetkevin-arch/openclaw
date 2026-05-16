@@ -76,7 +76,7 @@ export default function App() {
       case 'calculator':
         return (
           <PriceCalculator
-            onCreateJob={(insects: InsectType[], property: PropertyType, area: number) => {
+            onCreateJob={(insects, property, area) => {
               setCalcPrefill({ insects, property, area });
               navigate('new-booking');
             }}

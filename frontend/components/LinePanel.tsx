@@ -4,6 +4,21 @@ import { INSECT_LABELS, INSECT_EMOJI, PROPERTY_LABELS, formatPrice, formatDate, 
 import { Icon } from './Icons';
 import { runAgentTask } from '../services/geminiService';
 
+const AI_TEMPLATE_NAMES: Record<string, string> = {
+  quote: 'ใบเสนอราคา',
+  confirm: 'ยืนยันนัดหมาย',
+  remind: 'แจ้งเตือนนัดหมาย',
+  complete: 'แจ้งงานเสร็จสิ้น',
+};
+
+const AI_SYSTEM_INSTRUCTION = `คุณเป็นผู้ช่วยเขียนข้อความ LINE สำหรับธุรกิจบริการกำจัดแมลง เขียนข้อความที่:
+- เป็นมิตร อบอุ่น เป็นมืออาชีพ
+- ใช้ภาษาไทยที่สุภาพแต่ไม่เป็นทางการเกินไป
+- ใส่รายละเอียดเฉพาะของลูกค้าและงานเพื่อให้รู้สึกได้รับการดูแลอย่างใกล้ชิด
+- ใช้ emoji อย่างเหมาะสม ไม่มากเกินไป
+- ห้ามเพิ่มข้อมูลที่ไม่ได้รับมา (เช่น ห้ามแต่งตัวเลขราคาหรือวันเวลาเอง)
+- ตอบเฉพาะตัวข้อความ LINE เท่านั้น ไม่ต้องอธิบายเพิ่มเติม`;
+
 interface Props {
   job: Job;
 }
@@ -102,11 +117,11 @@ export const LinePanel: React.FC<Props> = ({ job }) => {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState<string | null>(null);
   const [aiMessages, setAiMessages] = useState<Record<string, string>>({});
-  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiErrors, setAiErrors] = useState<Record<string, string>>({});
 
   const handleAiDraft = async (key: string) => {
     setAiLoading(key);
-    setAiError(null);
+    setAiErrors(prev => { const { [key]: _, ...rest } = prev; return rest; });
     const insects = job.insectTypes.map(t => `${INSECT_EMOJI[t]}${INSECT_LABELS[t]}`).join(', ');
     const jobContext = [
       `ชื่อลูกค้า: ${job.customerName}`,
@@ -122,30 +137,15 @@ export const LinePanel: React.FC<Props> = ({ job }) => {
       job.problemDescription ? `รายละเอียดปัญหา: ${job.problemDescription}` : '',
     ].filter(Boolean).join('\n');
 
-    const templateNames: Record<string, string> = {
-      quote: 'ใบเสนอราคา',
-      confirm: 'ยืนยันนัดหมาย',
-      remind: 'แจ้งเตือนนัดหมาย',
-      complete: 'แจ้งงานเสร็จสิ้น',
-    };
-
-    const systemInstruction = `คุณเป็นผู้ช่วยเขียนข้อความ LINE สำหรับธุรกิจบริการกำจัดแมลง เขียนข้อความที่:
-- เป็นมิตร อบอุ่น เป็นมืออาชีพ
-- ใช้ภาษาไทยที่สุภาพแต่ไม่เป็นทางการเกินไป
-- ใส่รายละเอียดเฉพาะของลูกค้าและงานเพื่อให้รู้สึกได้รับการดูแลอย่างใกล้ชิด
-- ใช้ emoji อย่างเหมาะสม ไม่มากเกินไป
-- ห้ามเพิ่มข้อมูลที่ไม่ได้รับมา (เช่น ห้ามแต่งตัวเลขราคาหรือวันเวลาเอง)
-- ตอบเฉพาะตัวข้อความ LINE เท่านั้น ไม่ต้องอธิบายเพิ่มเติม`;
-
     try {
       const result = await runAgentTask(
-        systemInstruction,
-        `ข้อมูลงาน:\n${jobContext}\n\nประเภทข้อความ: ${templateNames[key] ?? key}`,
+        AI_SYSTEM_INSTRUCTION,
+        `ข้อมูลงาน:\n${jobContext}\n\nประเภทข้อความ: ${AI_TEMPLATE_NAMES[key] ?? key}`,
       );
       setAiMessages(prev => ({ ...prev, [key]: result }));
       setExpandedKey(key);
-    } catch (e: any) {
-      setAiError('ไม่สามารถเชื่อมต่อ AI ได้ กรุณาตรวจสอบการเชื่อมต่อ backend');
+    } catch {
+      setAiErrors(prev => ({ ...prev, [key]: 'ไม่สามารถเชื่อมต่อ AI ได้ กรุณาตรวจสอบการเชื่อมต่อ backend' }));
     } finally {
       setAiLoading(null);
     }
@@ -206,11 +206,6 @@ export const LinePanel: React.FC<Props> = ({ job }) => {
       {relevantTemplates.length > 0 && (
         <div className="space-y-2">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">ข้อความที่แนะนำ</div>
-          {aiError && (
-            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-2">
-              {aiError}
-            </div>
-          )}
           {relevantTemplates.map(([key, meta]) => {
             const defaultMessage = generateMessage(job, key as any);
             const aiMessage = aiMessages[key];
@@ -218,6 +213,7 @@ export const LinePanel: React.FC<Props> = ({ job }) => {
             const isExpanded = expandedKey === key;
             const isCopied = copiedKey === key;
             const isGenerating = aiLoading === key;
+            const aiError = aiErrors[key];
             return (
               <div key={key} className={`rounded-xl border ${COLOR_CLASSES[meta.color]} transition-colors`}>
                 <div className="flex items-center justify-between px-4 py-3">
@@ -268,6 +264,11 @@ export const LinePanel: React.FC<Props> = ({ job }) => {
                     </button>
                   </div>
                 </div>
+                {aiError && (
+                  <div className="mx-4 mb-1 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    {aiError}
+                  </div>
+                )}
                 {isExpanded && (
                   <div className="px-4 pb-4 space-y-2">
                     {aiMessage && (
@@ -277,7 +278,7 @@ export const LinePanel: React.FC<Props> = ({ job }) => {
                           <span>ข้อความจาก AI</span>
                         </span>
                         <button
-                          onClick={() => setAiMessages(prev => { const n = { ...prev }; delete n[key]; return n; })}
+                          onClick={() => setAiMessages(prev => { const { [key]: _, ...rest } = prev; return rest; })}
                           className="underline hover:opacity-100"
                         >
                           ใช้ข้อความเดิม
