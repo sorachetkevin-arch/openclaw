@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Job, JobStatus } from '../types';
-import { INSECT_LABELS, INSECT_EMOJI, formatPrice, formatDate, formatDateTime } from '../constants';
+import { INSECT_LABELS, INSECT_EMOJI, PROPERTY_LABELS, formatPrice, formatDate, formatDateTime } from '../constants';
 import { Icon } from './Icons';
+import { runAgentTask } from '../services/geminiService';
 
 interface Props {
   job: Job;
@@ -99,6 +100,56 @@ const COLOR_CLASSES: Record<string, string> = {
 export const LinePanel: React.FC<Props> = ({ job }) => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState<string | null>(null);
+  const [aiMessages, setAiMessages] = useState<Record<string, string>>({});
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const handleAiDraft = async (key: string) => {
+    setAiLoading(key);
+    setAiError(null);
+    const insects = job.insectTypes.map(t => `${INSECT_EMOJI[t]}${INSECT_LABELS[t]}`).join(', ');
+    const jobContext = [
+      `ชื่อลูกค้า: ${job.customerName}`,
+      `แมลงที่ต้องกำจัด: ${insects}`,
+      `ประเภทสถานที่: ${PROPERTY_LABELS[job.propertyType]}`,
+      `พื้นที่: ${job.areaM2} ตร.ม.`,
+      `ที่อยู่: ${job.address}`,
+      `ราคาประมาณ: ${formatPrice(job.estimatedPrice)}`,
+      job.finalPrice ? `ราคาจริง: ${formatPrice(job.finalPrice)}` : '',
+      job.scheduledDate ? `วันนัดหมาย: ${formatDateTime(job.scheduledDate)}` : '',
+      job.technician ? `ช่างผู้รับผิดชอบ: ${job.technician}` : '',
+      job.warrantyMonths ? `รับประกัน: ${job.warrantyMonths} เดือน` : '',
+      job.problemDescription ? `รายละเอียดปัญหา: ${job.problemDescription}` : '',
+    ].filter(Boolean).join('\n');
+
+    const templateNames: Record<string, string> = {
+      quote: 'ใบเสนอราคา',
+      confirm: 'ยืนยันนัดหมาย',
+      remind: 'แจ้งเตือนนัดหมาย',
+      complete: 'แจ้งงานเสร็จสิ้น',
+    };
+
+    const systemInstruction = `คุณเป็นผู้ช่วยเขียนข้อความ LINE สำหรับธุรกิจบริการกำจัดแมลง เขียนข้อความที่:
+- เป็นมิตร อบอุ่น เป็นมืออาชีพ
+- ใช้ภาษาไทยที่สุภาพแต่ไม่เป็นทางการเกินไป
+- ใส่รายละเอียดเฉพาะของลูกค้าและงานเพื่อให้รู้สึกได้รับการดูแลอย่างใกล้ชิด
+- ใช้ emoji อย่างเหมาะสม ไม่มากเกินไป
+- ห้ามเพิ่มข้อมูลที่ไม่ได้รับมา (เช่น ห้ามแต่งตัวเลขราคาหรือวันเวลาเอง)
+- ตอบเฉพาะตัวข้อความ LINE เท่านั้น ไม่ต้องอธิบายเพิ่มเติม`;
+
+    try {
+      const result = await runAgentTask(
+        systemInstruction,
+        `ข้อมูลงาน:\n${jobContext}\n\nประเภทข้อความ: ${templateNames[key] ?? key}`,
+      );
+      setAiMessages(prev => ({ ...prev, [key]: result }));
+      setExpandedKey(key);
+    } catch (e: any) {
+      setAiError('ไม่สามารถเชื่อมต่อ AI ได้ กรุณาตรวจสอบการเชื่อมต่อ backend');
+    } finally {
+      setAiLoading(null);
+    }
+  };
 
   const copyText = (key: string, text: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -155,16 +206,29 @@ export const LinePanel: React.FC<Props> = ({ job }) => {
       {relevantTemplates.length > 0 && (
         <div className="space-y-2">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">ข้อความที่แนะนำ</div>
+          {aiError && (
+            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-2">
+              {aiError}
+            </div>
+          )}
           {relevantTemplates.map(([key, meta]) => {
-            const message = generateMessage(job, key as any);
+            const defaultMessage = generateMessage(job, key as any);
+            const aiMessage = aiMessages[key];
+            const activeMessage = aiMessage ?? defaultMessage;
             const isExpanded = expandedKey === key;
             const isCopied = copiedKey === key;
+            const isGenerating = aiLoading === key;
             return (
               <div key={key} className={`rounded-xl border ${COLOR_CLASSES[meta.color]} transition-colors`}>
                 <div className="flex items-center justify-between px-4 py-3">
                   <div className="flex items-center space-x-2">
                     <Icon name={meta.icon} className="w-4 h-4" />
                     <span className="text-sm font-semibold">{meta.label}</span>
+                    {aiMessage && (
+                      <span className="text-xs bg-white/60 border border-current/20 px-1.5 py-0.5 rounded-full font-medium opacity-80">
+                        AI
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
@@ -174,7 +238,20 @@ export const LinePanel: React.FC<Props> = ({ job }) => {
                       {isExpanded ? 'ซ่อน' : 'ดูตัวอย่าง'}
                     </button>
                     <button
-                      onClick={() => copyText(key, message)}
+                      onClick={() => handleAiDraft(key)}
+                      disabled={isGenerating || !!aiLoading}
+                      className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-white/60 hover:bg-white border border-current/20 text-xs font-semibold transition-colors disabled:opacity-50"
+                      title="สร้างข้อความด้วย AI"
+                    >
+                      {isGenerating ? (
+                        <Icon name="Loader2" className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Icon name="Sparkles" className="w-3.5 h-3.5" />
+                      )}
+                      <span className="hidden sm:inline">{isGenerating ? 'กำลังสร้าง...' : 'AI'}</span>
+                    </button>
+                    <button
+                      onClick={() => copyText(key, activeMessage)}
                       className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-white/60 hover:bg-white border border-current/20 text-xs font-semibold transition-colors"
                     >
                       {isCopied ? (
@@ -192,9 +269,23 @@ export const LinePanel: React.FC<Props> = ({ job }) => {
                   </div>
                 </div>
                 {isExpanded && (
-                  <div className="px-4 pb-4">
+                  <div className="px-4 pb-4 space-y-2">
+                    {aiMessage && (
+                      <div className="flex items-center justify-between text-xs opacity-70">
+                        <span className="flex items-center space-x-1">
+                          <Icon name="Sparkles" className="w-3 h-3" />
+                          <span>ข้อความจาก AI</span>
+                        </span>
+                        <button
+                          onClick={() => setAiMessages(prev => { const n = { ...prev }; delete n[key]; return n; })}
+                          className="underline hover:opacity-100"
+                        >
+                          ใช้ข้อความเดิม
+                        </button>
+                      </div>
+                    )}
                     <pre className="text-xs text-slate-600 whitespace-pre-wrap bg-white/60 rounded-lg p-3 border border-current/10 font-sans leading-relaxed">
-                      {message}
+                      {activeMessage}
                     </pre>
                   </div>
                 )}

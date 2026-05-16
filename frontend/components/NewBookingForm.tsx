@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Job, InsectType, PropertyType, ContactSource } from '../types';
+import { Job, InsectType, PropertyType, ContactSource, CalcPrefill } from '../types';
 import {
   INSECT_LABELS, INSECT_EMOJI, PROPERTY_LABELS, SOURCE_LABELS, SOURCE_EMOJI,
   ALL_INSECT_TYPES, ALL_PROPERTY_TYPES, ALL_SOURCES, TECHNICIANS,
@@ -10,6 +10,7 @@ import { Icon } from './Icons';
 interface Props {
   onSave: (job: Job) => void;
   onCancel: () => void;
+  prefill?: CalcPrefill;
 }
 
 interface FormState {
@@ -44,9 +45,14 @@ const INITIAL: FormState = {
 
 const STEP_LABELS = ['ประเภทแมลง', 'สถานที่', 'รายละเอียด', 'ลูกค้า', 'สรุป'];
 
-export const NewBookingForm: React.FC<Props> = ({ onSave, onCancel }) => {
+export const NewBookingForm: React.FC<Props> = ({ onSave, onCancel, prefill }) => {
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<FormState>(INITIAL);
+  const [form, setForm] = useState<FormState>(() => prefill ? {
+    ...INITIAL,
+    insectTypes: prefill.insects,
+    propertyType: prefill.property,
+    areaM2: String(prefill.area),
+  } : INITIAL);
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -106,6 +112,14 @@ export const NewBookingForm: React.FC<Props> = ({ onSave, onCancel }) => {
         <h1 className="text-2xl font-bold text-slate-800">บันทึกงานใหม่</h1>
         <p className="text-sm text-slate-500 mt-1">กรอกข้อมูลลูกค้าที่ติดต่อเข้ามา</p>
       </div>
+
+      {/* Prefill notice */}
+      {prefill && (
+        <div className="flex items-center space-x-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700">
+          <Icon name="Calculator" className="w-4 h-4 shrink-0" />
+          <span>ข้อมูลแมลง, สถานที่ และพื้นที่ถูกนำมาจากเครื่องคำนวณราคาแล้ว — ตรวจสอบและแก้ไขได้ในแต่ละขั้นตอน</span>
+        </div>
+      )}
 
       {/* Progress */}
       <div className="flex items-center space-x-2">
