@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Job, View, InsectType, PropertyType } from './types';
+import { Job, View, InsectType, PropertyType, CalcPrefill } from './types';
 import { MOCK_JOBS } from './data/mockData';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -34,6 +34,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [calcPrefill, setCalcPrefill] = useState<CalcPrefill | null>(null);
 
   const navigate = useCallback((view: View, jobId?: string) => {
     setCurrentView(view);
@@ -67,14 +68,16 @@ export default function App() {
       case 'new-booking':
         return (
           <NewBookingForm
-            onSave={addJob}
-            onCancel={() => navigate('jobs')}
+            prefill={calcPrefill ?? undefined}
+            onSave={(job) => { setCalcPrefill(null); addJob(job); }}
+            onCancel={() => { setCalcPrefill(null); navigate('jobs'); }}
           />
         );
       case 'calculator':
         return (
           <PriceCalculator
-            onCreateJob={(insects: InsectType[], property: PropertyType, area: number) => {
+            onCreateJob={(insects, property, area) => {
+              setCalcPrefill({ insects, property, area });
               navigate('new-booking');
             }}
           />

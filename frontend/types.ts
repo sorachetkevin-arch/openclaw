@@ -38,3 +38,23 @@ export interface PriceBreakdown {
   propertyMultiplier: number;
   total: number;
 }
+
+export interface CalcPrefill {
+  insects: InsectType[];
+  property: PropertyType;
+  area: number;
+}
+
+export interface AgentState {
+  id: string;
+  name: string;
+  role: string;
+  description: string;
+  status: 'idle' | 'loading' | 'success' | 'error';
+  colorClass: string;
+  iconName: string;
+  output?: string;
+  error?: string;
+  startTime?: number;
+  endTime?: number;
+}
