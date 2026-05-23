@@ -7,7 +7,7 @@ import {
   X, TrendingUp, DollarSign, Filter, MapPin, Shield, Download, Send,
   MoreVertical, ChevronDown, ChevronUp, ArrowRight, BarChart2, CheckSquare,
   Star, Package, Briefcase, Layers, Info, Check, Bell, LogOut, Settings,
-  Users, FileCheck, Banknote, HelpCircle, RotateCcw, Copy,
+  Users, FileCheck, Banknote, HelpCircle, RotateCcw,
 } from 'lucide-react';
 
 interface IconProps {
@@ -76,7 +76,6 @@ export const Icon: React.FC<IconProps> = ({ name, className }) => {
     case 'Banknote': return <Banknote {...p} />;
     case 'HelpCircle': return <HelpCircle {...p} />;
     case 'RotateCcw': return <RotateCcw {...p} />;
-    case 'Copy': return <Copy {...p} />;
     default: return <FileText {...p} />;
   }
 };

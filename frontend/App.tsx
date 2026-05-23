@@ -34,6 +34,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [calcPrefill, setCalcPrefill] = useState<{ insectTypes: InsectType[]; propertyType: PropertyType; areaM2: string } | undefined>();
 
   const navigate = useCallback((view: View, jobId?: string) => {
     setCurrentView(view);
@@ -67,14 +68,16 @@ export default function App() {
       case 'new-booking':
         return (
           <NewBookingForm
-            onSave={addJob}
-            onCancel={() => navigate('jobs')}
+            onSave={job => { setCalcPrefill(undefined); addJob(job); }}
+            onCancel={() => { setCalcPrefill(undefined); navigate('jobs'); }}
+            initial={calcPrefill}
           />
         );
       case 'calculator':
         return (
           <PriceCalculator
             onCreateJob={(insects: InsectType[], property: PropertyType, area: number) => {
+              setCalcPrefill({ insectTypes: insects, propertyType: property, areaM2: String(area) });
               navigate('new-booking');
             }}
           />

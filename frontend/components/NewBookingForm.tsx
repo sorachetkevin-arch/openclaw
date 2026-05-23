@@ -10,6 +10,7 @@ import { Icon } from './Icons';
 interface Props {
   onSave: (job: Job) => void;
   onCancel: () => void;
+  initial?: Pick<FormState, 'insectTypes' | 'propertyType' | 'areaM2'>;
 }
 
 interface FormState {
@@ -44,9 +45,9 @@ const INITIAL: FormState = {
 
 const STEP_LABELS = ['ประเภทแมลง', 'สถานที่', 'รายละเอียด', 'ลูกค้า', 'สรุป'];
 
-export const NewBookingForm: React.FC<Props> = ({ onSave, onCancel }) => {
+export const NewBookingForm: React.FC<Props> = ({ onSave, onCancel, initial }) => {
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<FormState>(INITIAL);
+  const [form, setForm] = useState<FormState>(initial ? { ...INITIAL, ...initial } : INITIAL);
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));
