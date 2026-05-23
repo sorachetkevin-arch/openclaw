@@ -37,6 +37,7 @@ export default function App() {
   const [calcPrefill, setCalcPrefill] = useState<{ insectTypes: InsectType[]; propertyType: PropertyType; areaM2: string } | undefined>();
 
   const navigate = useCallback((view: View, jobId?: string) => {
+    if (view !== 'new-booking') setCalcPrefill(undefined);
     setCurrentView(view);
     if (jobId) setSelectedJobId(jobId);
     setSidebarOpen(false);
