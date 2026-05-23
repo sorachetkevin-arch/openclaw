@@ -227,7 +227,20 @@ export const JobDetail: React.FC<Props> = ({ job, onBack, onUpdate, onDelete }) 
                   {job.customerPhone}
                 </a>
               } />
-              {job.customerLineId && <InfoRow label="LINE" value={job.customerLineId} />}
+              {editing ? (
+                <div>
+                  <label className="block text-slate-500 mb-1">LINE ID</label>
+                  <input
+                    type="text"
+                    value={currentField('customerLineId') ?? ''}
+                    onChange={e => setEdit('customerLineId', e.target.value.trim() || undefined)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                    placeholder="@ชื่อ หรือ รหัส LINE"
+                  />
+                </div>
+              ) : (
+                job.customerLineId && <InfoRow label="LINE" value={job.customerLineId} />
+              )}
               <InfoRow
                 label="ช่องทาง"
                 value={`${SOURCE_EMOJI[job.source]} ${SOURCE_LABELS[job.source]}`}
