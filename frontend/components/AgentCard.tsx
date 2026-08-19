@@ -19,6 +19,8 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, isActive, onViewOut
         return 'border-green-200 bg-green-50/50 text-green-900 shadow-sm hover:shadow-md';
       case 'error':
         return 'border-red-200 bg-red-50 text-red-900 shadow-sm';
+      case 'skipped':
+        return 'border-slate-100 bg-slate-50/50 text-slate-300 opacity-60';
       default:
         return 'border-slate-200 bg-white';
     }
@@ -34,6 +36,8 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, isActive, onViewOut
         return <Icon name="CheckCircle" className="w-6 h-6 text-green-500" />;
       case 'error':
         return <Icon name="AlertCircle" className="w-6 h-6 text-red-500" />;
+      case 'skipped':
+        return <div className="w-6 h-6 rounded-full border-2 border-slate-100 flex items-center justify-center text-xs font-bold text-slate-200">—</div>;
     }
   };
 
@@ -69,6 +73,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({ agent, isActive, onViewOut
           {agent.status === 'success' && duration && <span className="text-green-600">Done in {duration}</span>}
           {agent.status === 'error' && <span className="text-red-500">Failed</span>}
           {agent.status === 'idle' && <span>Waiting</span>}
+          {agent.status === 'skipped' && <span className="text-slate-300">Not applicable</span>}
         </div>
         
         <button
