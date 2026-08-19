@@ -7,6 +7,7 @@ import { JobList } from './components/JobList';
 import { JobDetail } from './components/JobDetail';
 import { NewBookingForm } from './components/NewBookingForm';
 import { PriceCalculator } from './components/PriceCalculator';
+import { AgentOrchestrator } from './components/AgentOrchestrator';
 
 function useLocalStorage<T>(key: string, initial: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [state, setStateRaw] = useState<T>(() => {
@@ -96,8 +97,11 @@ export default function App() {
             onBack={() => navigate('jobs')}
             onUpdate={updateJob}
             onDelete={deleteJob}
+            onOpenAgents={() => navigate('agents', selectedJob.id)}
           />
         );
+      case 'agents':
+        return <AgentOrchestrator jobs={jobs} initialJobId={selectedJobId} />;
       default:
         return null;
     }

@@ -13,6 +13,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: 'jobs',         label: 'งานทั้งหมด',     icon: 'ClipboardList' },
   { view: 'new-booking',  label: 'นัดงานใหม่',     icon: 'Plus'          },
   { view: 'calculator',   label: 'คำนวณราคา',      icon: 'Calculator'    },
+  { view: 'agents',       label: 'ทีม AI Agents',   icon: 'Sparkles'      },
 ];
 
 interface Props {

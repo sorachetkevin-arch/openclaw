@@ -14,6 +14,7 @@ interface Props {
   onBack: () => void;
   onUpdate: (id: string, updates: Partial<Job>) => void;
   onDelete: (id: string) => void;
+  onOpenAgents: () => void;
 }
 
 const NEXT_STATUS: Record<JobStatus, JobStatus | null> = {
@@ -34,7 +35,7 @@ const NEXT_LABEL: Record<JobStatus, string> = {
   cancelled: '',
 };
 
-export const JobDetail: React.FC<Props> = ({ job, onBack, onUpdate, onDelete }) => {
+export const JobDetail: React.FC<Props> = ({ job, onBack, onUpdate, onDelete, onOpenAgents }) => {
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<Job>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -91,6 +92,15 @@ export const JobDetail: React.FC<Props> = ({ job, onBack, onUpdate, onDelete }) 
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          {!editing && (
+            <button
+              onClick={onOpenAgents}
+              className="flex items-center space-x-1.5 px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-medium transition-colors"
+            >
+              <Icon name="Sparkles" className="w-4 h-4" />
+              <span>AI Agents</span>
+            </button>
+          )}
           {!editing && (
             <button
               onClick={() => setEditing(true)}
