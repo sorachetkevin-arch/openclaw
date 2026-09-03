@@ -22,6 +22,31 @@
 
       /* Font */
       body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans Thai', sans-serif; }
+
+      /* Document printing: hide the app shell, print only the open document sheet */
+      @media print {
+        @page { size: A4; margin: 12mm; }
+        body { background: #fff !important; }
+        body.doc-open #root { display: none !important; }
+        .no-print { display: none !important; }
+        .doc-overlay {
+          position: static !important;
+          inset: auto !important;
+          background: #fff !important;
+          overflow: visible !important;
+        }
+        .doc-overlay > div { padding: 0 !important; }
+        .doc-sheet {
+          max-width: none !important;
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          border: none !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+        }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased">
