@@ -1,36 +1,18 @@
 import React, { useState, useCallback } from 'react';
 import { Job, View, InsectType, PropertyType } from './types';
-import { MOCK_JOBS } from './data/mockData';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { JobList } from './components/JobList';
 import { JobDetail } from './components/JobDetail';
 import { NewBookingForm } from './components/NewBookingForm';
 import { PriceCalculator } from './components/PriceCalculator';
-
-function useLocalStorage<T>(key: string, initial: T): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const [state, setStateRaw] = useState<T>(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : initial;
-    } catch {
-      return initial;
-    }
-  });
-
-  const setState: React.Dispatch<React.SetStateAction<T>> = useCallback((action) => {
-    setStateRaw(prev => {
-      const next = typeof action === 'function' ? (action as (p: T) => T)(prev) : action;
-      try { localStorage.setItem(key, JSON.stringify(next)); } catch {}
-      return next;
-    });
-  }, [key]);
-
-  return [state, setState];
-}
+import { useJobs } from './hooks/useJobs';
 
 export default function App() {
-  const [jobs, setJobs] = useLocalStorage<Job[]>('pest-crm-jobs', MOCK_JOBS);
+  const {
+    jobs, connection, error, saving,
+    addJob: persistJob, updateJob, deleteJob, refresh, dismissError,
+  } = useJobs();
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -42,18 +24,10 @@ export default function App() {
   }, []);
 
   const addJob = useCallback((job: Job) => {
-    setJobs(prev => [job, ...prev]);
+    persistJob(job);
     setSelectedJobId(job.id);
     setCurrentView('job-detail');
-  }, [setJobs]);
-
-  const updateJob = useCallback((id: string, updates: Partial<Job>) => {
-    setJobs(prev => prev.map(j => j.id === id ? { ...j, ...updates } : j));
-  }, [setJobs]);
-
-  const deleteJob = useCallback((id: string) => {
-    setJobs(prev => prev.filter(j => j.id !== id));
-  }, [setJobs]);
+  }, [persistJob]);
 
   const selectedJob = selectedJobId ? jobs.find(j => j.id === selectedJobId) ?? null : null;
   const newCount = jobs.filter(j => j.status === 'new').length;
@@ -144,6 +118,41 @@ export default function App() {
             </span>
           )}
         </div>
+
+        {/* Connection / error banner — the only place async failures surface */}
+        {(error || connection === 'loading' || saving) && (
+          <div
+            role="status"
+            aria-live="polite"
+            className={`shrink-0 px-4 py-2 text-sm flex items-center justify-between gap-3 ${
+              error
+                ? 'bg-amber-50 text-amber-800 border-b border-amber-200'
+                : 'bg-slate-50 text-slate-600 border-b border-slate-200'
+            }`}
+          >
+            <span className="min-w-0">
+              {error
+                ? error
+                : connection === 'loading'
+                  ? 'กำลังโหลดข้อมูลจากเซิร์ฟเวอร์...'
+                  : 'กำลังบันทึก...'}
+            </span>
+            {error && (
+              <span className="flex items-center gap-2 shrink-0">
+                <button onClick={refresh} className="underline font-medium">
+                  ลองใหม่
+                </button>
+                <button
+                  onClick={dismissError}
+                  aria-label="ปิดข้อความแจ้งเตือน"
+                  className="px-1.5 rounded hover:bg-amber-100"
+                >
+                  ✕
+                </button>
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Scrollable content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">

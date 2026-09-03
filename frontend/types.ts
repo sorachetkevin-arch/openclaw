@@ -29,6 +29,8 @@ export interface Job {
   source: ContactSource;
   warrantyMonths?: number;
   followUpDate?: string;
+  /** Set by the API on every write; absent on locally-created jobs not yet synced. */
+  updatedAt?: string;
 }
 
 export interface PriceBreakdown {
