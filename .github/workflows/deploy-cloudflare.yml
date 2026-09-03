@@ -3,14 +3,43 @@ name: Deploy to Cloudflare
 on:
   push:
     branches: [main, claude/medical-photo-scan-app-fmcuf2]
+  pull_request:
   workflow_dispatch:
 
 concurrency:
-  group: cloudflare-deploy
+  group: cloudflare-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Runs everywhere, including pull requests: this is the real validation.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build frontend
+        run: |
+          npm install
+          npx vite build
+        working-directory: frontend
+
+      - name: Install worker dependencies
+        run: npm install
+        working-directory: worker
+
+      - name: Typecheck worker
+        run: npm run typecheck
+        working-directory: worker
+
+  # Only from main (or a manual run), and only when credentials exist —
+  # a branch without Cloudflare secrets must not fail CI for lacking them.
   deploy:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,11 +60,17 @@ jobs:
         run: npm install
         working-directory: worker
 
-      - name: Typecheck worker
-        run: npm run typecheck
-        working-directory: worker
+      - name: Check for Cloudflare credentials
+        id: creds
+        run: echo "present=${{ secrets.CLOUDFLARE_API_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Report missing credentials
+        if: steps.creds.outputs.present != 'true'
+        run: |
+          echo "::warning::CLOUDFLARE_API_TOKEN is not set — skipping deploy. See DEPLOYMENT.md."
 
       - name: Apply D1 migrations
+        if: steps.creds.outputs.present == 'true'
         run: npx wrangler d1 migrations apply pest-crm --remote
         working-directory: worker
         env:
@@ -43,6 +78,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy worker
+        if: steps.creds.outputs.present == 'true'
         run: npx wrangler deploy
         working-directory: worker
         env:
