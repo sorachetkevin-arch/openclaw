@@ -1,8 +1,10 @@
 name: Deploy to Cloudflare
 
 on:
+  # `pull_request` already covers branches with an open PR, so listing a
+  # feature branch here too would run every check twice.
   push:
-    branches: [main, claude/medical-photo-scan-app-fmcuf2]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
