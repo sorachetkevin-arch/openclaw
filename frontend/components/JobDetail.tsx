@@ -8,6 +8,7 @@ import {
 import { StatusBadge } from './StatusBadge';
 import { Icon } from './Icons';
 import { LinePanel } from './LinePanel';
+import { DocumentModal, DocType } from './DocumentModal';
 
 interface Props {
   job: Job;
@@ -38,6 +39,7 @@ export const JobDetail: React.FC<Props> = ({ job, onBack, onUpdate, onDelete }) 
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<Job>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [openDoc, setOpenDoc] = useState<DocType | null>(null);
 
   const setEdit = <K extends keyof Job>(key: K, value: Job[K]) =>
     setEditData(prev => ({ ...prev, [key]: value }));
@@ -381,13 +383,15 @@ export const JobDetail: React.FC<Props> = ({ job, onBack, onUpdate, onDelete }) 
                 label="ใบเสนอราคา"
                 sub={formatPrice(job.estimatedPrice)}
                 color="blue"
+                onClick={() => setOpenDoc('quotation')}
               />
               {job.status === 'completed' && (
                 <DocButton
                   icon="Shield"
                   label="ใบรับประกัน"
-                  sub={`${job.warrantyMonths} เดือน`}
+                  sub={`${job.warrantyMonths ?? 3} เดือน`}
                   color="emerald"
+                  onClick={() => setOpenDoc('warranty')}
                 />
               )}
               {job.status === 'completed' && (
@@ -396,8 +400,10 @@ export const JobDetail: React.FC<Props> = ({ job, onBack, onUpdate, onDelete }) 
                   label="รายงานบริการ"
                   sub={formatDate(job.completedDate)}
                   color="purple"
+                  onClick={() => setOpenDoc('report')}
                 />
               )}
+              <div className="text-xs text-slate-400 pt-1">กดเพื่อดูตัวอย่าง แล้วพิมพ์หรือบันทึกเป็น PDF ได้ทันที</div>
             </div>
           </div>
 
@@ -424,6 +430,10 @@ export const JobDetail: React.FC<Props> = ({ job, onBack, onUpdate, onDelete }) 
 
       {/* LINE Integration */}
       <LinePanel job={job} />
+
+      {openDoc && (
+        <DocumentModal job={job} type={openDoc} onClose={() => setOpenDoc(null)} />
+      )}
     </div>
   );
 };
@@ -440,6 +450,7 @@ interface DocButtonProps {
   label: string;
   sub: string;
   color: 'blue' | 'emerald' | 'purple';
+  onClick: () => void;
 }
 
 const COLOR_MAP = {
@@ -448,9 +459,9 @@ const COLOR_MAP = {
   purple: 'bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100',
 };
 
-const DocButton: React.FC<DocButtonProps> = ({ icon, label, sub, color }) => (
+const DocButton: React.FC<DocButtonProps> = ({ icon, label, sub, color, onClick }) => (
   <button
-    onClick={() => alert(`กำลังสร้าง ${label}... (ฟีเจอร์นี้เชื่อม PDF generator)`)}
+    onClick={onClick}
     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${COLOR_MAP[color]}`}
   >
     <div className="flex items-center space-x-3">

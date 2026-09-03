@@ -88,6 +88,38 @@ export const PROPERTY_MULTIPLIER: Record<PropertyType, number> = {
 
 export const TECHNICIANS = ['สมชาย ใจดี', 'วิชัย แข็งแรง', 'ประสิทธิ์ ทำงาน', 'กิตติ รวดเร็ว'];
 
+// Company profile printed on quotations, warranty certificates and service reports.
+export const COMPANY = {
+  name: 'บริษัท กำจัดแมลง เซอร์วิส จำกัด',
+  tagline: 'บริการกำจัดแมลงและสัตว์รบกวน ครบวงจร',
+  address: '99/9 ถ.ลาดพร้าว แขวงจันทรเกษม เขตจตุจักร กรุงเทพฯ 10900',
+  phone: '02-000-0000',
+  mobile: '08x-xxx-xxxx',
+  lineId: '@pestcontrol',
+  taxId: '0-0000-00000-00-0',
+};
+
+// Standard treatment description per pest, used in service reports.
+export const TREATMENT_METHODS: Record<InsectType, string> = {
+  cockroach: 'ฉีดพ่นน้ำยาตกค้าง (Residual Spray) บริเวณครัว ห้องน้ำ ท่อระบายน้ำ และวางเจลเหยื่อตามจุดซ่อนตัว',
+  termite:   'อัดน้ำยาลงดินรอบแนวฐานราก เจาะพื้นอัดน้ำยาใต้อาคาร และฉีดพ่นโครงสร้างไม้ที่พบร่องรอย',
+  rat:       'วางกล่องเหยื่อและกับดักตามแนวทางเดินของหนู อุดช่องทางเข้า และตรวจสอบจุดที่พบมูล/รอยกัด',
+  mosquito:  'พ่นหมอกควัน (Fogging) บริเวณรอบอาคารและสวน ร่วมกับใส่ทรายอะเบทในแหล่งน้ำขัง',
+  ant:       'ฉีดพ่นน้ำยาตามแนวทางเดินมด วางเจลเหยื่อจุดที่พบมด และพ่นรอบขอบอาคาร',
+  bedbugs:   'พ่นน้ำยาบนที่นอน ขอบเตียง ตู้เสื้อผ้า และซอกมุมห้อง ร่วมกับใช้ความร้อนกำจัดไข่',
+  fly:       'พ่นน้ำยาบริเวณจุดทิ้งขยะและครัว ติดตั้งกับดักแมลงวัน และพ่นหมอกควันพื้นที่โดยรอบ',
+  other:     'สำรวจหน้างานและใช้วิธีกำจัดที่เหมาะสมกับชนิดแมลงที่พบ',
+};
+
+export const CUSTOMER_PREP_LIST = [
+  'เก็บอาหาร ภาชนะ และของใช้ในครัวให้มิดชิด',
+  'ย้ายเด็กเล็ก สัตว์เลี้ยง และปลูกไม้ประดับออกจากพื้นที่ฉีดพ่น',
+  'เปิดประตู-หน้าต่างระบายอากาศประมาณ 2-4 ชั่วโมงหลังฉีดพ่น',
+  'งดเช็ดถูพื้นและผนังบริเวณที่ฉีดพ่นอย่างน้อย 3 วัน',
+];
+
+export const QUOTATION_VALID_DAYS = 7;
+
 export const ALL_INSECT_TYPES: InsectType[] = ['cockroach', 'termite', 'rat', 'mosquito', 'ant', 'bedbugs', 'fly', 'other'];
 export const ALL_PROPERTY_TYPES: PropertyType[] = ['house', 'townhouse', 'condo', 'office', 'restaurant', 'factory'];
 export const ALL_STATUSES: JobStatus[] = ['new', 'quoted', 'confirmed', 'scheduled', 'completed', 'cancelled'];
@@ -138,6 +170,25 @@ export function formatDateTime(iso?: string): string {
     year: 'numeric', month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
+}
+
+export function formatDateLong(iso?: string): string {
+  if (!iso) return '-';
+  return new Date(iso).toLocaleDateString('th-TH', {
+    year: 'numeric', month: 'long', day: 'numeric',
+  });
+}
+
+export function addMonths(iso: string, months: number): string {
+  const d = new Date(iso);
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString();
+}
+
+export function addDays(iso: string, days: number): string {
+  const d = new Date(iso);
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
 }
 
 export function generateId(): string {

@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [claude/class-booking-line-integration-hFNvf]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
