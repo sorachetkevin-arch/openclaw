@@ -5,3 +5,7 @@ package-lock.json
 dist/
 *.log
 .DS_Store
+
+# Cloudflare Workers
+worker/.wrangler/
+.qa/

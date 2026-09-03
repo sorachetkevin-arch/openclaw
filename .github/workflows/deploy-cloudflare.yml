@@ -1,0 +1,50 @@
+name: Deploy to Cloudflare
+
+on:
+  push:
+    branches: [main, claude/medical-photo-scan-app-fmcuf2]
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # The Worker serves the built SPA through its ASSETS binding, so the
+      # frontend must be built before wrangler packages the deployment.
+      - name: Build frontend
+        run: |
+          npm install
+          npx vite build
+        working-directory: frontend
+
+      - name: Install worker dependencies
+        run: npm install
+        working-directory: worker
+
+      - name: Typecheck worker
+        run: npm run typecheck
+        working-directory: worker
+
+      - name: Apply D1 migrations
+        run: npx wrangler d1 migrations apply pest-crm --remote
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy worker
+        run: npx wrangler deploy
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
